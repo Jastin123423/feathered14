@@ -1,0 +1,17 @@
+name = "feathered"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-01-14"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+JWT_SECRET = "feathered_2026_super_long_random_secret_string_9x8y7z6a5b4c3d2e1f"
+FIREBASE_PROJECT_ID = "unera-50aae"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "feathered"
+database_id = "5adc2d13-8d38-4982-a404-daa104a7a8a9"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "feathered"

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#1877F2</color>
+    <color name="colorPrimaryDark">#050B18</color>
+    <color name="colorAccent">#1877F2</color>
+    <color name="windowBackground">#050B18</color>
+    <color name="ic_launcher_background">#050B18</color>
+    <color name="uneraNavy">#050B18</color>
+    <color name="uneraBlue">#1877F2</color>
+</resources>

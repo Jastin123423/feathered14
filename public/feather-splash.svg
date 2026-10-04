@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background Radial Gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="60%" stop-color="#070A12"/>
+      <stop offset="100%" stop-color="#04060A"/>
+    </radialGradient>
+
+    <!-- Glowing Blue Light behind Feather -->
+    <radialGradient id="featherHalo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2563EB" stop-opacity="0.85"/>
+      <stop offset="30%" stop-color="#1D4ED8" stop-opacity="0.5"/>
+      <stop offset="70%" stop-color="#0EA5E9" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- White Glow Filter -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18" result="blur1"/>
+      <feGaussianBlur stdDeviation="36" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Deep Dark Background -->
+  <rect width="1024" height="1024" fill="url(#bgGlow)"/>
+
+  <!-- Radiant Neon Blue Halo -->
+  <circle cx="512" cy="410" r="230" fill="url(#featherHalo)"/>
+
+  <!-- Centered Feathered Emblem (Glowing White) -->
+  <g transform="translate(262, 160) scale(1.0)" filter="url(#neonGlow)">
+    <!-- Shaft -->
+    <path d="M 226,350 L 226,240 C 226,200 230,150 240,88 C 236,92 232,140 229,198 C 227,248 225,302 222,350 Z" fill="#FFFFFF"/>
+    <!-- Quill Tip -->
+    <path d="M 222,350 L 226,350 L 224,402 Z" fill="#FFFFFF"/>
+
+    <!-- 1. Top Plume -->
+    <path d="M 240,88 C 265,85 315,90 368,110 C 388,118 396,128 392,132 C 375,142 315,152 248,150 C 242,149 238,138 240,88 Z" fill="#FFFFFF"/>
+
+    <!-- 2. Second Plume -->
+    <path d="M 246,160 C 282,160 330,174 364,198 C 370,203 366,210 354,213 C 312,224 265,224 242,212 C 240,211 242,168 246,160 Z" fill="#FFFFFF"/>
+
+    <!-- 3. Third Plume -->
+    <path d="M 238,228 C 270,228 316,238 342,260 C 347,264 343,270 332,272 C 292,280 252,278 234,268 C 232,267 235,232 238,228 Z" fill="#FFFFFF"/>
+
+    <!-- 4. Fourth Plume -->
+    <path d="M 232,284 C 255,286 288,300 306,322 C 310,327 305,331 294,332 C 265,334 242,326 230,318 C 228,316 230,288 232,284 Z" fill="#FFFFFF"/>
+
+    <!-- 5. Left Upper Barb -->
+    <path d="M 227,172 C 198,182 172,216 166,258 C 165,263 171,266 176,262 C 196,248 214,222 226,196 Z" fill="#FFFFFF"/>
+
+    <!-- 6. Left Lower Barb -->
+    <path d="M 224,266 C 202,280 182,310 178,342 C 177,347 183,349 189,345 C 205,332 218,308 223,286 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Typography: FEATHERED -->
+  <text x="512" y="650"
+        text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-weight="800"
+        font-size="52"
+        letter-spacing="9"
+        fill="#FFFFFF">FEATHERED</text>
+
+  <!-- Tagline: Connect, Create, Move. -->
+  <text x="512" y="870"
+        text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-weight="500"
+        font-size="22"
+        letter-spacing="1.5"
+        fill="#94A3B8">Connect, Create, Move.</text>
+</svg>

@@ -1,0 +1,52 @@
+{
+  "name": "copy-of-copy-of-copy-of-unera-social-network-1",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:android": "vite build && npx cap sync android",
+    "android:sync": "npx cap sync android",
+    "android:copy": "npx cap copy android",
+    "lint": "tsc --noEmit",
+    "preview": "vite preview",
+    "transcoder": "node transcoder/server.cjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/keyboard": "^8.0.5",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@fortawesome/fontawesome-svg-core": "^6.5.1",
+    "@fortawesome/free-solid-svg-icons": "^6.5.1",
+    "@fortawesome/react-fontawesome": "^0.2.0",
+    "@google/genai": "^1.35.0",
+    "@hono/zod-validator": "^0.7.6",
+    "express": "^4.21.2",
+    "firebase": "^12.19.0",
+    "hono": "^4.11.3",
+    "jose": "^6.1.3",
+    "lucide-react": "^1.45.0",
+    "mp4-muxer": "^5.2.2",
+    "multer": "^1.4.5-lts.1",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-router-dom": "^6.22.0",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

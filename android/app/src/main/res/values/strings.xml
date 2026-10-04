@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Feathered</string>
+    <string name="title_activity_main">Feathered</string>
+    <string name="package_name">com.unera.social</string>
+    <string name="custom_url_scheme">com.unera.social</string>
+</resources>

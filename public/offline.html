@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
+
+<title>UNERA Offline</title>
+
+<style>
+    body {
+        margin: 0;
+        background: #050B18;
+        color: white;
+        font-family:
+            Inter,
+            Segoe UI,
+            sans-serif;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        height: 100vh;
+
+        text-align: center;
+    }
+
+    .container {
+        padding: 30px;
+        max-width: 320px;
+    }
+
+    .logo {
+        width: 90px;
+        height: 90px;
+        margin-bottom: 20px;
+        border-radius: 24px;
+    }
+
+    h1 {
+        margin: 0;
+        font-size: 28px;
+    }
+
+    p {
+        opacity: 0.75;
+        line-height: 1.5;
+        margin-top: 14px;
+        font-size: 16px;
+    }
+
+    button {
+        margin-top: 24px;
+
+        background: #1877F2;
+        color: white;
+
+        border: none;
+        border-radius: 18px;
+
+        padding: 14px 24px;
+
+        font-size: 16px;
+        font-weight: 600;
+
+        cursor: pointer;
+    }
+
+    button:active {
+        transform: scale(0.98);
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <img
+        class="logo"
+        src="https://media.unera.social/unera_icon_192x192.png"
+    />
+
+    <h1>You're Offline</h1>
+
+    <p>
+        UNERA cannot connect right now.
+        Check your internet connection
+        and try again.
+    </p>
+
+    <button onclick="location.reload()">
+        Retry
+    </button>
+
+</div>
+
+</body>
+</html>
