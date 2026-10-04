@@ -978,6 +978,8 @@ function apiDevPlugin(): Plugin {
             return req.on('end', () => {
               try {
                 const parsed = JSON.parse(body || '{}');
+                let vis = (parsed.visibility || 'group').toLowerCase();
+                if (vis === 'worldwide' || vis === 'targeted' || !vis) vis = 'group';
                 const newEvent = {
                   id: Date.now(),
                   group_id: groupId,
@@ -989,6 +991,7 @@ function apiDevPlugin(): Plugin {
                   creator_id: parsed.creator_id || 1,
                   creator_name: parsed.creator_name || 'Organizer',
                   created_at: new Date().toISOString(),
+                  visibility: vis,
                   attending_count: 0,
                   interested_count: 0,
                   my_status: '',

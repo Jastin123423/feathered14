@@ -8347,7 +8347,7 @@ const fetchGroupDetails = useCallback(async (groupId: number) => {
       event_date,
       location,
       cover_url,
-      visibility: String(eventData.visibility || "worldwide"),
+      visibility: "group",
     };
 
     try {

@@ -377,7 +377,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
-  const [visibility, setVisibility] = useState<'worldwide' | 'targeted'>('worldwide');
+  const [visibility, setVisibility] = useState<'worldwide' | 'targeted' | 'group'>(groupId ? 'group' : 'worldwide');
   const [image, setImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -538,7 +538,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         event_date: date,
         event_time: time,
         location: finalLocation,
-        visibility,
+        visibility: groupId ? 'group' : visibility,
         cover_url: coverUrl,
         ...(groupId ? { group_id: groupId } : {}),
       };
@@ -739,53 +739,55 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
           </section>
 
-          {/* Visibility */}
-          <section>
-            <label className="block text-[#94A3B8] text-[15px] mb-2">Audience</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setVisibility('worldwide')}
-                className={`rounded-2xl border p-4 text-left transition-colors ${
-                  visibility === 'worldwide'
-                    ? 'border-[#1877F2] bg-[#1877F2]/10'
-                    : 'border-[#1E293B] bg-[#0B1120] hover:bg-[#162032]'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <i className="fas fa-globe text-[#1877F2]"></i>
-                  <span className="text-[#F8FAFC] font-semibold">Worldwide</span>
-                </div>
-                <div className="text-[#94A3B8] text-sm">
-                  Visible broadly across UNERA.
-                </div>
-              </button>
+          {/* Visibility - Only shown for public/feed events, never shown for group events */}
+          {!groupId && (
+            <section>
+              <label className="block text-[#94A3B8] text-[15px] mb-2">Audience</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibility('worldwide')}
+                  className={`rounded-2xl border p-4 text-left transition-colors ${
+                    visibility === 'worldwide'
+                      ? 'border-[#1877F2] bg-[#1877F2]/10'
+                      : 'border-[#1E293B] bg-[#0B1120] hover:bg-[#162032]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <i className="fas fa-globe text-[#1877F2]"></i>
+                    <span className="text-[#F8FAFC] font-semibold">Worldwide</span>
+                  </div>
+                  <div className="text-[#94A3B8] text-sm">
+                    Visible broadly across UNERA.
+                  </div>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setVisibility('targeted')}
-                className={`rounded-2xl border p-4 text-left transition-colors ${
-                  visibility === 'targeted'
-                    ? 'border-[#1877F2] bg-[#1877F2]/10'
-                    : 'border-[#1E293B] bg-[#0B1120] hover:bg-[#162032]'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <i className="fas fa-location-dot text-[#F02849]"></i>
-                  <span className="text-[#F8FAFC] font-semibold">Local Only</span>
-                </div>
-                <div className="text-[#94A3B8] text-sm">
-                  Prioritize people near this location.
-                </div>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setVisibility('targeted')}
+                  className={`rounded-2xl border p-4 text-left transition-colors ${
+                    visibility === 'targeted'
+                      ? 'border-[#1877F2] bg-[#1877F2]/10'
+                      : 'border-[#1E293B] bg-[#0B1120] hover:bg-[#162032]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <i className="fas fa-location-dot text-[#F02849]"></i>
+                    <span className="text-[#F8FAFC] font-semibold">Local Only</span>
+                  </div>
+                  <div className="text-[#94A3B8] text-sm">
+                    Prioritize people near this location.
+                  </div>
+                </button>
+              </div>
 
-            {visibility === 'targeted' && (
-              <p className="text-[12px] text-[#94A3B8] mt-2 italic">
-                The system will try to target users near the location you entered.
-              </p>
-            )}
-          </section>
+              {visibility === 'targeted' && (
+                <p className="text-[12px] text-[#94A3B8] mt-2 italic">
+                  The system will try to target users near the location you entered.
+                </p>
+              )}
+            </section>
+          )}
 
           {/* Description */}
           <section>

@@ -99,16 +99,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     const end_date = toText(body.end_date) || null;
     const location = toText(body.location) || null;
     const cover_url = toText(body.cover_url ?? body.image) || null;
-    const visibility = toText(body.visibility, "group").toLowerCase() || "group";
+    let visibility = toText(body.visibility, "group").toLowerCase() || "group";
+    if (visibility === "worldwide" || visibility === "targeted" || !["group", "public"].includes(visibility)) {
+      visibility = "group";
+    }
 
     if (!creator_id) return json({ success: false, error: "creator_id missing" }, 400);
     if (!title) return json({ success: false, error: "title missing" }, 400);
     if (!event_date) return json({ success: false, error: "event_date missing" }, 400);
     if (isNaN(Date.parse(event_date))) {
       return json({ success: false, error: "Invalid event_date" }, 400);
-    }
-    if (!["group", "public"].includes(visibility)) {
-      return json({ success: false, error: "Invalid visibility" }, 400);
     }
 
     // Group exists?
