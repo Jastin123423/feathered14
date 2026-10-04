@@ -6817,6 +6817,15 @@ export const Post = memo(
 
     // If it's an event post, render EventPost component
     if (isEventPost) {
+      const isGroupEvent = Boolean(
+        p?.group_id ||
+        meta?.group_id ||
+        p?.is_group_event ||
+        p?.source === 'group_event' ||
+        p?.item_type === 'group_event'
+      );
+      if (isGroupEvent) return null;
+
       const event = normalizeEventFromFeed(p);  
       return (
         <div className={exitAnimClass}>
@@ -12128,6 +12137,17 @@ export const Feed = memo(({
     for (const item of rawList) {
       if (!item) continue;
       const data = item.data || item;
+      
+      // ✅ Never show group events in Feed
+      const isGrpEvent = Boolean(
+        (data.group_id && (data.item_type === 'event' || data.type === 'event' || data.source === 'event' || !!data.event_id)) ||
+        data.is_group_event ||
+        data.source === 'group_event' ||
+        data.item_type === 'group_event' ||
+        (data.meta && typeof data.meta === 'object' && data.meta.group_id && (data.meta.type === 'event' || data.meta.event))
+      );
+      if (isGrpEvent) continue;
+
       const key = getFeedKey(data) || (data?.id ? `${getFeedItemType(data)}:${data.id}` : null);
       if (key) {
         if (seenKeys.has(key)) continue;

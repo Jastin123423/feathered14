@@ -964,6 +964,111 @@ function apiDevPlugin(): Plugin {
           return res.end(JSON.stringify([]));
         }
 
+        // Group Events: GET & POST /api/groups/:id/events
+        const groupEventsMatch = pathname.match(/^\/api\/groups\/(\d+)\/events\/?$/);
+        if (groupEventsMatch) {
+          const groupId = Number(groupEventsMatch[1]);
+          if (req.method === 'GET') {
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true, events: [] }));
+          }
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            return req.on('end', () => {
+              try {
+                const parsed = JSON.parse(body || '{}');
+                const newEvent = {
+                  id: Date.now(),
+                  group_id: groupId,
+                  title: parsed.title || 'Group Event',
+                  description: parsed.description || '',
+                  event_date: parsed.event_date || new Date().toISOString(),
+                  location: parsed.location || '',
+                  cover_url: parsed.cover_url || '',
+                  creator_id: parsed.creator_id || 1,
+                  creator_name: parsed.creator_name || 'Organizer',
+                  created_at: new Date().toISOString(),
+                  attending_count: 0,
+                  interested_count: 0,
+                  my_status: '',
+                };
+                res.statusCode = 200;
+                return res.end(JSON.stringify({ success: true, event: newEvent }));
+              } catch {
+                res.statusCode = 200;
+                return res.end(JSON.stringify({ success: true }));
+              }
+            });
+          }
+        }
+
+        // Group Post Sharing: POST /api/groups/posts/share
+        if (pathname === '/api/groups/posts/share' && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          return req.on('end', () => {
+            try {
+              const parsed = JSON.parse(body || '{}');
+              res.statusCode = 200;
+              return res.end(JSON.stringify({
+                success: true,
+                message: 'Shared successfully',
+                share_count: 1,
+                destination: parsed.destination || 'feed'
+              }));
+            } catch {
+              res.statusCode = 200;
+              return res.end(JSON.stringify({ success: true }));
+            }
+          });
+        }
+
+        // Group Event RSVP: POST /api/group-events/:id/attend & /api/group-events/:id/interested
+        const groupEventAttendMatch = pathname.match(/^\/api\/group-events\/(\d+)\/attend\/?$/);
+        if (groupEventAttendMatch && req.method === 'POST') {
+          const eventId = Number(groupEventAttendMatch[1]);
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          return req.on('end', () => {
+            try {
+              const parsed = JSON.parse(body || '{}');
+              res.statusCode = 200;
+              return res.end(JSON.stringify({
+                success: true,
+                action: parsed.action || 'attend',
+                event_id: eventId,
+                attending_count: parsed.action === 'remove' ? 0 : 1
+              }));
+            } catch {
+              res.statusCode = 200;
+              return res.end(JSON.stringify({ success: true }));
+            }
+          });
+        }
+
+        const groupEventInterestedMatch = pathname.match(/^\/api\/group-events\/(\d+)\/interested\/?$/);
+        if (groupEventInterestedMatch && req.method === 'POST') {
+          const eventId = Number(groupEventInterestedMatch[1]);
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          return req.on('end', () => {
+            try {
+              const parsed = JSON.parse(body || '{}');
+              res.statusCode = 200;
+              return res.end(JSON.stringify({
+                success: true,
+                action: parsed.action || 'interested',
+                event_id: eventId,
+                interested_count: parsed.action === 'remove' ? 0 : 1
+              }));
+            } catch {
+              res.statusCode = 200;
+              return res.end(JSON.stringify({ success: true }));
+            }
+          });
+        }
+
         if (pathname === '/api/group-members') {
           if (req.method === 'GET') {
             res.statusCode = 200;

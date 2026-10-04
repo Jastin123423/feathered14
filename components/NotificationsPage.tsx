@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Notification, User } from "../types";
+import { Notification, User, Group } from "../types";
 
 interface Props {
   notifications: Notification[];
   users: User[];
+  groups?: Group[];
   currentUser?: User | null;
   onBack?: () => void;
   onProfileClick: (id: number) => void;
@@ -203,7 +204,7 @@ const getNotificationBadge = (n: Notification) => {
   return { kind: "icon" as const, value: "fas fa-bell", bg: "#1877F2" };
 };
 
-const buildNotificationMessageParts = (n: Notification) => {
+const buildNotificationMessageParts = (n: Notification, groups?: Group[]) => {
   const type = safeText(n.type).toLowerCase();
   const entityType = safeText(n.entity_type || (n as any).target_type || "").toLowerCase();
   const rawMessage = safeText(n.message || "").trim();
@@ -280,9 +281,13 @@ const buildNotificationMessageParts = (n: Notification) => {
     };
   }
 
-  if (type.includes("invite")) {
+  if (type.includes("invite") || entityType === "group_invite" || entityType === "group") {
+    const rawGroupId = safeNumber((n as any).group_id || n.entity_id || (n as any).parent_id, 0);
+    const matchedGroup = groups?.find(g => Number(g.id) === rawGroupId);
+    const groupName = (n as any).group_name || (n as any).target_name || matchedGroup?.name || (n as any).title;
+    const groupDisplay = groupName ? `"${groupName}"` : "the group";
     return {
-      middle: `${othersText} invited you to join ${targetLabel === "your content" ? "a group" : targetLabel}.`.trim(),
+      middle: `${othersText} invited you to join ${groupDisplay}.`.trim(),
       cta: "",
     };
   }
@@ -348,6 +353,7 @@ const NotificationReactionCluster: React.FC<{ notification: Notification }> = ({
 export const NotificationsPage: React.FC<Props> = ({
   notifications,
   users,
+  groups = [],
   currentUser,
   onBack,
   onProfileClick,
@@ -656,7 +662,7 @@ export const NotificationsPage: React.FC<Props> = ({
       12
     );
     const previewImage = safeText((n as any).preview_image || "");
-    const messageParts = buildNotificationMessageParts(n);
+    const messageParts = buildNotificationMessageParts(n, groups);
     const hasStack = getStackActorIds(n).length > 1 || safeNumber(n.actors_count, 1) > 1;
 
     const isInvite =
@@ -763,48 +769,50 @@ export const NotificationsPage: React.FC<Props> = ({
             )}
 
             {/* Interactive Group Invite Actions */}
-            {isInvite && (
-              <div
-                className="mt-2.5 flex items-center gap-2 select-none"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {inviteStatus[notificationId] === "joined" ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#10B981]/20 text-[#34D399] text-xs font-bold border border-[#10B981]/30">
-                    <i className="fas fa-check text-xs"></i>
-                    <span>Joined</span>
-                  </div>
-                ) : inviteStatus[notificationId] === "rejected" ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#64748B]/20 text-[#94A3B8] text-xs font-medium border border-[#64748B]/30">
-                    <i className="fas fa-times text-xs"></i>
-                    <span>Declined</span>
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      disabled={inviteLoading[notificationId]}
-                      onClick={() => handleJoinInvite(n)}
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#1877F2] hover:bg-[#166FE5] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-                    >
-                      {inviteLoading[notificationId] ? (
-                        <i className="fas fa-circle-notch fa-spin text-xs"></i>
-                      ) : (
-                        <i className="fas fa-user-plus text-xs"></i>
-                      )}
-                      <span>Join</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={inviteLoading[notificationId]}
-                      onClick={() => handleRejectInvite(n)}
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#CBD5E1] hover:text-white text-xs font-semibold transition-all border border-[#334155]/60 active:scale-95 disabled:opacity-50 cursor-pointer"
-                    >
-                      <span>Reject</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+            {isInvite && (() => {
+              const isJoined = inviteStatus[notificationId] === "joined";
+              const isRejected = inviteStatus[notificationId] === "rejected";
+              const rawGroupId = safeNumber((n as any).group_id || n.entity_id || (n as any).parent_id, 0);
+              const matchedGroup = groups?.find(g => Number(g.id) === rawGroupId);
+              const isAlreadyMember = Boolean(
+                matchedGroup?.is_member ||
+                (Array.isArray(matchedGroup?.members) && currentUser?.id && matchedGroup.members.map(Number).includes(Number(currentUser.id)))
+              );
+
+              // If user join an invite from NotificationPage, hide join group and cancel button only keep notification
+              if (isJoined || isAlreadyMember || isRejected) {
+                return null;
+              }
+
+              return (
+                <div
+                  className="mt-2.5 flex items-center gap-2 select-none"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    disabled={inviteLoading[notificationId]}
+                    onClick={() => handleJoinInvite(n)}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#1877F2] hover:bg-[#166FE5] text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    {inviteLoading[notificationId] ? (
+                      <i className="fas fa-circle-notch fa-spin text-xs"></i>
+                    ) : (
+                      <i className="fas fa-user-plus text-xs"></i>
+                    )}
+                    <span>Join Group</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={inviteLoading[notificationId]}
+                    onClick={() => handleRejectInvite(n)}
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#CBD5E1] hover:text-white text-xs font-semibold transition-all border border-[#334155]/60 active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    <span>Cancel</span>
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Timestamp & Reaction preview */}
             <div className="mt-1 flex items-center gap-2 flex-wrap select-none">

@@ -9263,12 +9263,14 @@ useEffect(() => {
 
   // Transform feed items
   const feedItems = useMemo<FeedItem[]>(() => {
-    const postItems = safeArray(rankedPosts).map(post => ({
-      ...post,
-      type: 'post' as const,
-      id: post.id,
-      created_at: post.created_at,
-    }));
+    const postItems = safeArray(rankedPosts)
+      .filter(post => !(post.group_id && (post.type === 'event' || post.item_type === 'event' || post.source === 'event' || post.is_group_event)))
+      .map(post => ({
+        ...post,
+        type: 'post' as const,
+        id: post.id,
+        created_at: post.created_at,
+      }));
 
     const reelItems = safeArray(reels).map(reel => ({
       id: `reel-${reel.id}`,
@@ -12746,6 +12748,7 @@ return (
   <NotificationsPage
     notifications={enrichedNotifications}
     users={users}
+    groups={groups}
     currentUser={currentUser}
     onBack={() => navigateTo('home')}
     onProfileClick={(id) => openProfile(id)}

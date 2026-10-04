@@ -66,7 +66,8 @@ const compressEventCoverImage = async (file: File): Promise<File> => {
   const objectUrl = URL.createObjectURL(file);
   try {
     const img = await loadImageElement(objectUrl);
-    const targetSize = calcContainSize(img.naturalWidth, img.naturalHeight, 1600);
+    // Optimized for mobile data: 1200px max dimension provides sharp Retina covers at minimal byte size
+    const targetSize = calcContainSize(img.naturalWidth, img.naturalHeight, 1200);
 
     const canvas = document.createElement('canvas');
     canvas.width = targetSize.width;
@@ -75,13 +76,32 @@ const compressEventCoverImage = async (file: File): Promise<File> => {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas context not available');
 
+    // High quality downscaling
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, 0, 0, targetSize.width, targetSize.height);
 
-    const blob = await canvasToBlob(canvas, 'image/webp', 0.84);
-    const ts = Date.now();
+    // Highly compressed WebP for mobile network bandwidth savings (0.78 quality)
+    let blob = await canvasToBlob(canvas, 'image/webp', 0.78).catch(() => null);
+    let mimeType = 'image/webp';
+    let ext = 'webp';
 
-    return new File([blob], `${ts}-event-cover.webp`, {
-      type: 'image/webp',
+    // Fallback to jpeg if browser doesn't support webp export
+    if (!blob) {
+      blob = await canvasToBlob(canvas, 'image/jpeg', 0.78);
+      mimeType = 'image/jpeg';
+      ext = 'jpg';
+    }
+
+    // If still large for mobile data, apply lightweight second pass
+    if (blob.size > 350 * 1024) {
+      const secondBlob = await canvasToBlob(canvas, mimeType, 0.65).catch(() => null);
+      if (secondBlob) blob = secondBlob;
+    }
+
+    const ts = Date.now();
+    return new File([blob], `${ts}-event-cover.${ext}`, {
+      type: mimeType,
     });
   } finally {
     URL.revokeObjectURL(objectUrl);

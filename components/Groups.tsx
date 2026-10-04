@@ -562,21 +562,21 @@ const GroupSettingsPage: React.FC<GroupSettingsModalProps> = ({
   return (
     <div className="w-full min-h-screen bg-[#050B18] text-[#F8FAFC] pb-16 animate-fade-in font-sans">
       {/* Top Header */}
-      <div className="sticky top-0 z-40 bg-[#0F172A]/95 backdrop-blur-md border-b border-[#1E293B] px-4 py-3.5">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <div className="sticky top-0 z-40 bg-[#050B18]/95 backdrop-blur-md border-b border-[#1E293B] px-4 py-3.5">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-[#1E293B] hover:bg-[#334155] flex items-center justify-center text-[#F8FAFC] transition-colors"
+              className="w-10 h-10 rounded-full hover:bg-[#1E293B] flex items-center justify-center text-[#F8FAFC] transition-colors"
               aria-label="Back to Group"
             >
               <i className="fas fa-arrow-left text-base"></i>
             </button>
             <div>
-              <h1 className="text-xl font-extrabold text-[#F8FAFC] flex items-center gap-2">
-                <i className="fas fa-cog text-[#1877f2]"></i> Group Settings
+              <h1 className="text-xl font-bold text-[#F8FAFC] flex items-center gap-2">
+                Group Settings
               </h1>
-              <p className="text-xs text-[#94A3B8] truncate max-w-[220px] md:max-w-md">
+              <p className="text-xs text-[#94A3B8] truncate max-w-[200px] md:max-w-md">
                 {group.name}
               </p>
             </div>
@@ -592,38 +592,33 @@ const GroupSettingsPage: React.FC<GroupSettingsModalProps> = ({
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-8">
         {statusMessage && (
           <div
-            className={`p-4 rounded-xl border flex items-center gap-3 text-sm font-semibold animate-slide-up ${
+            className={`p-3.5 rounded-xl border flex items-center gap-3 text-sm font-semibold animate-slide-up ${
               statusMessage.type === 'success'
                 ? 'bg-[#45BD62]/10 border-[#45BD62]/30 text-[#45BD62]'
                 : 'bg-[#F3425F]/10 border-[#F3425F]/30 text-[#F3425F]'
             }`}
           >
-            <i className={`fas ${statusMessage.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-lg`}></i>
+            <i className={`fas ${statusMessage.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-base`}></i>
             <span>{statusMessage.text}</span>
           </div>
         )}
 
-        {/* Card 1: Community Profile */}
-        <div className="bg-[#0F172A] rounded-2xl border border-[#1E293B] p-5 md:p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#1E293B]">
-            <div className="w-8 h-8 rounded-lg bg-[#1877f2]/10 text-[#1877f2] flex items-center justify-center">
-              <i className="fas fa-info-circle"></i>
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-[#F8FAFC]">Community Profile</h2>
-              <p className="text-xs text-[#94A3B8]">Basic group identity and public information</p>
-            </div>
+        {/* Section 1: Community Profile (Flat layout, no container boxes) */}
+        <div className="border-b border-[#1E293B] pb-8 space-y-6">
+          <div>
+            <h2 className="text-lg font-bold text-[#F8FAFC]">Community Profile</h2>
+            <p className="text-xs text-[#94A3B8] mt-0.5">Basic group identity and public information</p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Group Name</label>
+              <label className="block text-[#CBD5E1] text-xs font-semibold uppercase tracking-wider mb-2">Group Name</label>
               <input
                 type="text"
-                className="w-full bg-[#1E293B] border border-[#334155]/60 focus:border-[#1877f2] rounded-xl px-4 py-3 text-[#F8FAFC] font-semibold text-base outline-none transition-colors"
+                className="w-full bg-transparent border-b border-[#334155] focus:border-[#1877f2] px-0 py-2.5 text-[#F8FAFC] font-semibold text-lg outline-none transition-colors placeholder-[#64748B]"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Enter community name"
@@ -631,55 +626,54 @@ const GroupSettingsPage: React.FC<GroupSettingsModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Description</label>
+              <label className="block text-[#CBD5E1] text-xs font-semibold uppercase tracking-wider mb-2">Description</label>
               <textarea
-                className="w-full bg-[#1E293B] border border-[#334155]/60 focus:border-[#1877f2] rounded-xl px-4 py-3 text-[#F8FAFC] text-sm outline-none transition-colors h-28 resize-none leading-relaxed"
+                className="w-full bg-transparent border-b border-[#334155] focus:border-[#1877f2] px-0 py-2.5 text-[#F8FAFC] text-sm outline-none transition-colors h-28 resize-none leading-relaxed placeholder-[#64748B]"
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
                 placeholder="What is this group about?"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-              <div className="bg-[#141E33] border border-[#1E293B] rounded-xl p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${categoryInfo.color}20` }}>
-                  <i className={categoryInfo.icon} style={{ color: categoryInfo.color }}></i>
-                </div>
-                <div>
-                  <div className="text-xs text-[#94A3B8]">Category</div>
-                  <div className="text-sm font-bold text-[#F8FAFC]">{categoryInfo.label}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="py-2.5 flex items-center justify-between border-b border-[#1E293B]">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${categoryInfo.color}20` }}>
+                    <i className={categoryInfo.icon} style={{ color: categoryInfo.color }}></i>
+                  </div>
+                  <div>
+                    <div className="text-xs text-[#94A3B8]">Category</div>
+                    <div className="text-sm font-semibold text-[#F8FAFC]">{categoryInfo.label}</div>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-[#141E33] border border-[#1E293B] rounded-xl p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#334155]/40 text-[#94A3B8] flex items-center justify-center shrink-0">
-                  <i className={`fas ${group.type === 'public' ? 'fa-globe-americas' : 'fa-lock'}`}></i>
-                </div>
-                <div>
-                  <div className="text-xs text-[#94A3B8]">Privacy</div>
-                  <div className="text-sm font-bold text-[#F8FAFC] capitalize">{group.type || 'public'} Group</div>
+              <div className="py-2.5 flex items-center justify-between border-b border-[#1E293B]">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#1E293B] text-[#94A3B8] flex items-center justify-center shrink-0">
+                    <i className={`fas ${group.type === 'public' ? 'fa-globe-americas' : 'fa-lock'}`}></i>
+                  </div>
+                  <div>
+                    <div className="text-xs text-[#94A3B8]">Privacy</div>
+                    <div className="text-sm font-semibold text-[#F8FAFC] capitalize">{group.type || 'public'} Group</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Posting & Member Permissions */}
-        <div className="bg-[#0F172A] rounded-2xl border border-[#1E293B] p-5 md:p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#1E293B]">
-            <div className="w-8 h-8 rounded-lg bg-[#45BD62]/10 text-[#45BD62] flex items-center justify-center">
-              <i className="fas fa-shield-alt"></i>
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-[#F8FAFC]">Posting & Member Permissions</h2>
-              <p className="text-xs text-[#94A3B8]">Control who can create posts in this group</p>
-            </div>
+        {/* Section 2: Posting & Member Permissions (Flat layout, no container boxes) */}
+        <div className="border-b border-[#1E293B] pb-8 space-y-6">
+          <div>
+            <h2 className="text-lg font-bold text-[#F8FAFC]">Posting & Member Permissions</h2>
+            <p className="text-xs text-[#94A3B8] mt-0.5">Control who can create posts in this group</p>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-[#141E33] rounded-xl border border-[#1E293B]">
-              <div className="pr-4">
-                <div className="text-[#F8FAFC] font-bold text-base">Allow Member Posting</div>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between py-3 border-b border-[#1E293B]">
+              <div className="pr-6">
+                <div className="text-[#F8FAFC] font-semibold text-base">Allow Member Posting</div>
                 <div className="text-[#94A3B8] text-xs mt-1 leading-relaxed">
                   When enabled, all members can post. When disabled, only group admins and the owner can post. Members can still view, react, comment, and share.
                 </div>
@@ -692,65 +686,56 @@ const GroupSettingsPage: React.FC<GroupSettingsModalProps> = ({
               </div>
             </div>
 
-            {/* Quick Bulk Member Controls */}
+            {/* Quick Bulk Member Controls - Flat list rows */}
             <div className="pt-2">
-              <div className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider mb-2">Bulk Member Controls</div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <button
-                  type="button"
+              <div className="text-sm font-semibold text-[#CBD5E1] mb-1">Bulk Member Controls</div>
+              <p className="text-xs text-[#94A3B8] mb-4">Quickly toggle posting permissions for all group members</p>
+              
+              <div className="space-y-3">
+                <div
                   onClick={handleDisableAllMembers}
-                  disabled={disablingAll}
-                  className="p-4 bg-[#141E33] hover:bg-[#1E293B] border border-[#F7B928]/30 hover:border-[#F7B928] rounded-xl text-left transition-all group disabled:opacity-50"
+                  className="flex items-center justify-between p-3.5 rounded-xl hover:bg-[#141E33] cursor-pointer transition-colors border border-transparent hover:border-[#1E293B]"
                 >
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#F7B928]/15 text-[#F7B928] flex items-center justify-center">
+                  <div className="flex items-center gap-3.5 pr-4">
+                    <div className="w-10 h-10 rounded-xl bg-[#F7B928]/15 text-[#F7B928] flex items-center justify-center shrink-0">
                       {disablingAll ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-ban"></i>}
                     </div>
-                    <span className="font-bold text-[#F8FAFC] text-sm group-hover:text-[#F7B928] transition-colors">
-                      Disable All Members
-                    </span>
+                    <div>
+                      <div className="font-semibold text-sm text-[#F8FAFC]">Disable Posting for All Members</div>
+                      <div className="text-xs text-[#94A3B8] mt-0.5">Only admins will be allowed to post. Members can still react and comment.</div>
+                    </div>
                   </div>
-                  <p className="text-xs text-[#94A3B8]">
-                    Restricts every non-admin member from posting. Members can only react, comment, and share.
-                  </p>
-                </button>
+                  <i className="fas fa-chevron-right text-xs text-[#64748B]"></i>
+                </div>
 
-                <button
-                  type="button"
+                <div
                   onClick={handleEnableAllMembers}
-                  disabled={enablingAll}
-                  className="p-4 bg-[#141E33] hover:bg-[#1E293B] border border-[#45BD62]/30 hover:border-[#45BD62] rounded-xl text-left transition-all group disabled:opacity-50"
+                  className="flex items-center justify-between p-3.5 rounded-xl hover:bg-[#141E33] cursor-pointer transition-colors border border-transparent hover:border-[#1E293B]"
                 >
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#45BD62]/15 text-[#45BD62] flex items-center justify-center">
+                  <div className="flex items-center gap-3.5 pr-4">
+                    <div className="w-10 h-10 rounded-xl bg-[#45BD62]/15 text-[#45BD62] flex items-center justify-center shrink-0">
                       {enablingAll ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check-double"></i>}
                     </div>
-                    <span className="font-bold text-[#F8FAFC] text-sm group-hover:text-[#45BD62] transition-colors">
-                      Enable All Members
-                    </span>
+                    <div>
+                      <div className="font-semibold text-sm text-[#F8FAFC]">Enable Posting for All Members</div>
+                      <div className="text-xs text-[#94A3B8] mt-0.5">Restores standard posting access for all members in this community.</div>
+                    </div>
                   </div>
-                  <p className="text-xs text-[#94A3B8]">
-                    Restores posting access for all members in this community.
-                  </p>
-                </button>
+                  <i className="fas fa-chevron-right text-xs text-[#64748B]"></i>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Danger Zone */}
+        {/* Section 3: Danger Zone */}
         {isAdmin && (
-          <div className="bg-[#0F172A] rounded-2xl border border-red-500/20 p-5 md:p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center">
-                <i className="fas fa-exclamation-triangle"></i>
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-red-500">Danger Zone</h2>
-                <p className="text-xs text-[#94A3B8]">Permanent actions that cannot be undone</p>
-              </div>
+          <div className="pb-8 space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-red-500">Danger Zone</h2>
+              <p className="text-xs text-[#94A3B8] mt-0.5">Permanent actions that cannot be undone</p>
             </div>
-            <p className="text-xs text-[#94A3B8] mb-4">
+            <p className="text-xs text-[#94A3B8]">
               Deleting this community will remove all posts, comments, events, and member records permanently.
             </p>
             <button
@@ -759,9 +744,9 @@ const GroupSettingsPage: React.FC<GroupSettingsModalProps> = ({
                   onDeleteGroup();
                 }
               }}
-              className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white font-bold py-3 px-6 rounded-xl transition-all border border-red-500/30 text-sm flex items-center gap-2"
+              className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white font-bold py-2.5 px-5 rounded-xl transition-all border border-red-500/30 text-sm flex items-center gap-2"
             >
-              <i className="fas fa-trash"></i>
+              <i className="fas fa-trash text-xs"></i>
               <span>Delete Community</span>
             </button>
           </div>
@@ -782,29 +767,106 @@ const GroupEventCard: React.FC<{
 }> = ({ event, group, currentUser, onRSVP, onProfileClick }) => {
   const [rsvpStatus, setRsvpStatus] = useState<string>(event.user_rsvp_status || '');
   const [loading, setLoading] = useState(false);
-  const eventDate = new Date(event.start_time || event.date || '');
-  const formattedDate = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const eventDate = new Date(event.start_time || event.date || event.event_date || '');
+  const formattedDate = !Number.isNaN(eventDate.getTime())
+    ? eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'Upcoming Event';
+
+  const coverUrl = event.cover_url || event.cover_image || (event as any).image;
 
   const handleRSVP = async (status: string) => {
     if (!currentUser || !onRSVP) return;
     setLoading(true);
-    try { await onRSVP(event.id, status); setRsvpStatus(status); } catch (error) { console.error('Failed to RSVP:', error); } finally { setLoading(false); }
+    try { 
+      await onRSVP(event.id, status); 
+      setRsvpStatus(status === 'not_going' ? '' : status); 
+    } catch (error) { 
+      console.error('Failed to RSVP:', error); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
-    <div className="bg-[#0F172A] rounded-xl border border-[#1E293B] overflow-hidden hover:shadow-lg transition-all">
-      {event.cover_image && (<div className="h-40 overflow-hidden"><img src={event.cover_image} alt={event.title} className="w-full h-full object-cover" /></div>)}
-      <div className="p-4">
+    <div className="bg-[#0F172A] rounded-2xl border border-[#1E293B] overflow-hidden hover:shadow-lg transition-all">
+      {coverUrl && (
+        <div className="h-44 overflow-hidden relative">
+          <img 
+            src={coverUrl} 
+            alt={event.title} 
+            loading="lazy" 
+            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
+          />
+        </div>
+      )}
+      <div className="p-5">
         <h4 className="text-[#F8FAFC] font-bold text-lg mb-2">{event.title}</h4>
-        <p className="text-[#94A3B8] text-sm mb-3 line-clamp-2">{event.description}</p>
+        {event.description && (
+          <p className="text-[#94A3B8] text-sm mb-3.5 line-clamp-2 leading-relaxed">{event.description}</p>
+        )}
         <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-2 text-[#94A3B8] text-sm"><i className="fas fa-calendar text-[#1877f2] w-5"></i><span>{formattedDate}</span></div>
-          {event.location && (<div className="flex items-center gap-2 text-[#94A3B8] text-sm"><i className="fas fa-map-marker-alt text-[#1877f2] w-5"></i><span>{event.location}</span></div>)}
-          <div className="flex items-center gap-2 text-[#94A3B8] text-sm"><i className="fas fa-users text-[#1877f2] w-5"></i><span>{event.attendees?.length || 0} attending</span></div>
+          <div className="flex items-center gap-2 text-[#94A3B8] text-sm">
+            <i className="fas fa-calendar text-[#1877f2] w-5"></i>
+            <span>{formattedDate}</span>
+          </div>
+          {event.location && (
+            <div className="flex items-center gap-2 text-[#94A3B8] text-sm">
+              <i className="fas fa-map-marker-alt text-[#1877f2] w-5"></i>
+              <span className="truncate">{event.location}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-[#94A3B8] text-sm">
+            <i className="fas fa-users text-[#1877f2] w-5"></i>
+            <span>{event.attendees?.length || (event as any).attending_count || 0} attending</span>
+          </div>
         </div>
         {currentUser && onRSVP && (
-          <div className="flex gap-2">
-            {rsvpStatus === 'going' ? (<button onClick={() => handleRSVP('not_going')} disabled={loading} className="flex-1 bg-[#45BD62] text-white px-3 py-2 rounded-lg font-bold text-sm hover:bg-[#3aa34f] transition-colors disabled:opacity-50"><i className="fas fa-check mr-2"></i>Going</button>) : (<><button onClick={() => handleRSVP('going')} disabled={loading} className="flex-1 bg-[#1877f2] text-white px-3 py-2 rounded-lg font-bold text-sm hover:bg-[#166fe5] transition-colors disabled:opacity-50">Going</button><button onClick={() => handleRSVP('interested')} disabled={loading} className="flex-1 bg-[#1E293B] text-[#F8FAFC] px-3 py-2 rounded-lg font-bold text-sm hover:bg-[#334155] transition-colors disabled:opacity-50">Interested</button></>)}
+          <div className="flex gap-2 pt-1">
+            {rsvpStatus === 'going' ? (
+              <button 
+                onClick={() => handleRSVP('not_going')} 
+                disabled={loading} 
+                className="flex-1 bg-[#10B981] text-white px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-[#059669] transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <i className="fas fa-check text-xs"></i>
+                <span>Going (Attending)</span>
+              </button>
+            ) : rsvpStatus === 'interested' ? (
+              <>
+                <button 
+                  onClick={() => handleRSVP('going')} 
+                  disabled={loading} 
+                  className="flex-1 bg-[#1877f2] text-white px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-[#166fe5] transition-colors disabled:opacity-50"
+                >
+                  Going
+                </button>
+                <button 
+                  onClick={() => handleRSVP('not_going')} 
+                  disabled={loading} 
+                  className="flex-1 bg-[#F7B928]/20 text-[#F7B928] border border-[#F7B928]/40 px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-[#F7B928]/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  <i className="fas fa-star text-xs"></i>
+                  <span>Interested</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button 
+                  onClick={() => handleRSVP('going')} 
+                  disabled={loading} 
+                  className="flex-1 bg-[#1877f2] text-white px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-[#166fe5] transition-colors disabled:opacity-50 active:scale-95"
+                >
+                  Going
+                </button>
+                <button 
+                  onClick={() => handleRSVP('interested')} 
+                  disabled={loading} 
+                  className="flex-1 bg-[#1E293B] text-[#F8FAFC] border border-[#334155] px-3 py-2.5 rounded-xl font-bold text-sm hover:bg-[#334155] transition-colors disabled:opacity-50 active:scale-95"
+                >
+                  Interested
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -2007,20 +2069,24 @@ const CreateGroupFullPageModal: React.FC<{
   const [previews, setPreviews] = useState<string[]>([]);
   const [postMetadata, setPostMetadata] = useState<any>({});
   const [inviteSearch, setInviteSearch] = useState('');
- const [invitingUserIds, setInvitingUserIds] = useState<number[]>([]);
- const [showGroupMenu, setShowGroupMenu] = useState(false); 
-const [groupInvites, setGroupInvites] = useState<any[]>([]);
-const [loadingInvites, setLoadingInvites] = useState(false);
-const [acceptingInviteId, setAcceptingInviteId] = useState<number | null>(null);
-const [decliningInviteId, setDecliningInviteId] = useState<number | null>(null);
-const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
-const [disablePostingUserId, setDisablePostingUserId] = useState<number | null>(null);
- const [activeGroupDetails, setActiveGroupDetails] = useState<Group | null>(null);
- const [localGroups, setLocalGroups] = useState<Group[]>([]);
+  const [inviteLimit, setInviteLimit] = useState(10);
+  const [locallyInvitedUserIds, setLocallyInvitedUserIds] = useState<number[]>([]);
+  const [showShareGroupModal, setShowShareGroupModal] = useState(false);
+  const [copiedGroupLink, setCopiedGroupLink] = useState(false);
+  const [invitingUserIds, setInvitingUserIds] = useState<number[]>([]);
+  const [showGroupMenu, setShowGroupMenu] = useState(false); 
+  const [groupInvites, setGroupInvites] = useState<any[]>([]);
+  const [loadingInvites, setLoadingInvites] = useState(false);
+  const [acceptingInviteId, setAcceptingInviteId] = useState<number | null>(null);
+  const [decliningInviteId, setDecliningInviteId] = useState<number | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
+  const [disablePostingUserId, setDisablePostingUserId] = useState<number | null>(null);
+  const [activeGroupDetails, setActiveGroupDetails] = useState<Group | null>(null);
+  const [localGroups, setLocalGroups] = useState<Group[]>([]);
   const [memberMenuOpenId, setMemberMenuOpenId] = useState<number | null>(null);
-const [memberMetaOverrides, setMemberMetaOverrides] = useState<
-  Record<number, { group_role?: 'admin' | 'moderator' | 'member'; posting_disabled?: boolean }>
->({});    
+  const [memberMetaOverrides, setMemberMetaOverrides] = useState<
+    Record<number, { group_role?: 'admin' | 'moderator' | 'member'; posting_disabled?: boolean }>
+  >({});    
   const [groupImageOverrides, setGroupImageOverrides] = useState<Record<number, { cover_image?: string; profile_image?: string }>>({});
 
   // Group feed infinite scroll
@@ -2058,20 +2124,38 @@ const pendingUploadTypeRef = useRef<'cover' | 'profile' | null>(null);
   const inviteableUsers = useMemo(() => {
   if (!activeGroup || !currentUser) return [];
   
+  // Collect all member IDs of this group
   const memberIds = new Set<number>(
-    Array.isArray(activeGroup.members) ? activeGroup.members : []
+    Array.isArray(activeGroup.members) ? activeGroup.members.map(Number) : []
   );
   memberIds.add(Number(activeGroup.admin_id));
+  if (Array.isArray(liveMembers)) {
+    liveMembers.forEach((m: any) => memberIds.add(Number(m.user_id || m.id)));
+  }
   
-  // Create a set of user IDs that already have pending invites
-  const invitedUserIds = new Set<number>(
-    groupInvites.map(invite => Number(invite.invitee_id))
-  );
+  // Create a set of user IDs that already have pending invites or were invited this session
+  const invitedUserIds = new Set<number>([
+    ...groupInvites.map(invite => Number(invite.invitee_id)),
+    ...locallyInvitedUserIds.map(Number),
+  ]);
+
+  // Followers of currentUser
+  const myFollowerIds = new Set<number>([
+    ...((currentUser as any)?.followers || []).map(Number),
+    ...(users || [])
+      .filter((u: any) => Array.isArray(u.following) && u.following.map(Number).includes(Number(currentUser.id)))
+      .map((u: any) => Number(u.id)),
+  ]);
+
+  // If currentUser has followers, prioritize showing followers as requested; fallback to other non-members during testing
+  const candidatePool = myFollowerIds.size > 0
+    ? (users || []).filter((u: User) => myFollowerIds.has(Number(u.id)))
+    : (users || []);
   
-  return (users || []).filter((u: User) => {
+  return candidatePool.filter((u: User) => {
     if (!u?.id) return false;
     if (Number(u.id) === Number(currentUser.id)) return false;
-    // Exclude members
+    // Don't show user in invite list if they are already a member of the group
     if (memberIds.has(Number(u.id))) return false;
     
     const q = inviteSearch.trim().toLowerCase();
@@ -2084,7 +2168,7 @@ const pendingUploadTypeRef = useRef<'cover' | 'profile' | null>(null);
     ...user,
     isInvited: invitedUserIds.has(Number(user.id))
   }));
-}, [activeGroup, currentUser, users, inviteSearch, groupInvites]);
+}, [activeGroup, currentUser, users, inviteSearch, groupInvites, liveMembers, locallyInvitedUserIds]);
 
     
   // ========== HELPER FUNCTIONS ==========
@@ -2107,31 +2191,11 @@ const pendingUploadTypeRef = useRef<'cover' | 'profile' | null>(null);
     return `${window.location.origin}/groups/${group.id}`;
   }, []);
 
-  const handleShareGroup = useCallback(async () => {
+  const handleShareGroup = useCallback(() => {
     if (!activeGroup) return;
-    const shareUrl = getGroupShareLink(activeGroup);
-    const shareText = `Join the group "${activeGroup.name}" on UNERA`;
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: activeGroup.name,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      }
-      await navigator.clipboard.writeText(shareUrl);
-      alert('Group link copied to clipboard');
-    } catch (error) {
-      console.error('Failed to share group:', error);
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        alert('Group link copied to clipboard');
-      } catch {
-        alert(shareUrl);
-      }
-    }
-  }, [activeGroup, getGroupShareLink]);
+    setCopiedGroupLink(false);
+    setShowShareGroupModal(true);
+  }, [activeGroup]);
 
   // ========== EFFECTS ==========
   useEffect(() => {
@@ -2529,27 +2593,31 @@ const handleGroupClick = async (group: Group) => {
     }
   };
  
- const handleInviteUser = async (userId: number) => {
-  if (!activeGroup || !onInviteToGroup) return;
-  try {
-    setInvitingUserIds(prev => [...prev, userId]);
-    const result = await onInviteToGroup(activeGroup.id, [userId]);
-    console.log('Invite result:', result);
-    
-    // Refresh invites list to update the "Invited" status
-    if (fetchGroupInvites) {
-      const updatedInvites = await fetchGroupInvites();
-      setGroupInvites(updatedInvites);
+  const handleInviteUser = async (userId: number) => {
+    if (!activeGroup) return;
+    try {
+      setInvitingUserIds(prev => [...prev, userId]);
+      setLocallyInvitedUserIds(prev => [...prev, userId]);
+      if (onInviteToGroup) {
+        await onInviteToGroup(activeGroup.id, [userId]);
+      } else {
+        await apiFetch('/api/group-invites', {
+          method: 'POST',
+          body: JSON.stringify({ group_id: activeGroup.id, invitee_id: userId, inviter_id: currentUser?.id })
+        });
+      }
+
+      // Refresh invites list to update the "Invited" status
+      if (fetchGroupInvites) {
+        const updatedInvites = await fetchGroupInvites().catch(() => []);
+        if (Array.isArray(updatedInvites)) setGroupInvites(updatedInvites);
+      }
+    } catch (error) {
+      console.error('Failed to invite user:', error);
+    } finally {
+      setInvitingUserIds(prev => prev.filter(id => id !== userId));
     }
-    
-    alert('Invite sent');
-  } catch (error) {
-    console.error('Failed to invite user:', error);
-    alert('Failed to send invite: ' + (error as Error).message);
-  } finally {
-    setInvitingUserIds(prev => prev.filter(id => id !== userId));
-  }
-};
+  };
 
 
   // ✅ FIXED: Submit post handler with proper Buy/Sell metadata
@@ -2719,16 +2787,48 @@ const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, type: '
   };
 
   const handleEventRSVP = async (eventId: number, status: string) => {
-    if (!onEventRSVP) return;
     try { 
-      await onEventRSVP(eventId, status); 
+      const meId = currentUser?.id;
+      if (status === 'going') {
+        await apiFetch(`/api/group-events/${eventId}/attend`, {
+          method: 'POST',
+          body: JSON.stringify({ event_id: eventId, user_id: meId, action: 'attend' })
+        }).catch(() => {});
+        await apiFetch(`/api/group-events/${eventId}/interested`, {
+          method: 'POST',
+          body: JSON.stringify({ event_id: eventId, user_id: meId, action: 'remove' })
+        }).catch(() => {});
+      } else if (status === 'interested') {
+        await apiFetch(`/api/group-events/${eventId}/interested`, {
+          method: 'POST',
+          body: JSON.stringify({ event_id: eventId, user_id: meId, action: 'interested' })
+        }).catch(() => {});
+        await apiFetch(`/api/group-events/${eventId}/attend`, {
+          method: 'POST',
+          body: JSON.stringify({ event_id: eventId, user_id: meId, action: 'remove' })
+        }).catch(() => {});
+      } else {
+        await apiFetch(`/api/group-events/${eventId}/attend`, {
+          method: 'POST',
+          body: JSON.stringify({ event_id: eventId, user_id: meId, action: 'remove' })
+        }).catch(() => {});
+        await apiFetch(`/api/group-events/${eventId}/interested`, {
+          method: 'POST',
+          body: JSON.stringify({ event_id: eventId, user_id: meId, action: 'remove' })
+        }).catch(() => {});
+      }
+
+      if (onEventRSVP) {
+        await onEventRSVP(eventId, status);
+      }
+
       setGroupEvents(prev => prev.map(event => { 
         if (event.id === eventId) { 
           return { 
             ...event, 
-            user_rsvp_status: status, 
+            user_rsvp_status: status === 'not_going' ? '' : status, 
             attendees: status === 'going' 
-              ? [...(event.attendees || []), currentUser?.id]
+              ? Array.from(new Set([...(event.attendees || []), currentUser?.id]))
               : (event.attendees || []).filter(id => id !== currentUser?.id) 
           } as any; 
         } 
@@ -3799,7 +3899,7 @@ return (
                   </div>
                 </div>
             
-<div className="flex gap-2 mt-4 md:mt-0 w-full md:w-auto">
+<div className="flex items-center gap-2 mt-4 md:mt-0 w-full md:w-auto">
   {isMember ? (
     <>
       {/* Joined button FIRST */}
@@ -3807,10 +3907,20 @@ return (
         {leaving ? (<i className="fas fa-spinner fa-spin mr-2"></i>) : (<i className="fas fa-check mr-2"></i>)}
         {leaving ? 'Leaving...' : 'Joined'}
       </button>
+
+      {/* Direct Share button */}
+      <button 
+        onClick={handleShareGroup} 
+        className="bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] px-3.5 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+        title="Share Group"
+      >
+        <i className="fas fa-share-alt text-[#94A3B8]"></i>
+        <span>Share</span>
+      </button>
       
-      {/* ... menu button SECOND (on the right) */}
+      {/* ... menu button (on the right) */}
       <div className="relative">
-        <button onClick={() => setShowGroupMenu(prev => !prev)} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#141E33] transition-all">
+        <button onClick={() => setShowGroupMenu(prev => !prev)} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#141E33] transition-all" aria-label="More options">
           <i className="fas fa-ellipsis-h text-[#F8FAFC] text-xl"></i>
         </button>
         {showGroupMenu && (
@@ -3834,9 +3944,19 @@ return (
       </div>
     </>
   ) : (
-    <button onClick={handleJoinGroup} disabled={joining} className="bg-[#1877f2] text-white px-8 py-2 rounded-lg font-bold text-base hover:bg-[#166fe5] w-full md:w-auto transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-      {joining ? 'Joining...' : 'Join Group'}
-    </button>
+    <div className="flex items-center gap-2 w-full md:w-auto">
+      <button onClick={handleJoinGroup} disabled={joining} className="bg-[#1877f2] text-white px-8 py-2 rounded-lg font-bold text-base hover:bg-[#166fe5] flex-1 md:flex-none transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+        {joining ? 'Joining...' : 'Join Group'}
+      </button>
+      <button 
+        onClick={handleShareGroup} 
+        className="bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+        title="Share Group"
+      >
+        <i className="fas fa-share-alt text-[#94A3B8]"></i>
+        <span>Share</span>
+      </button>
+    </div>
   )}
 </div>
               </div>
@@ -3873,28 +3993,67 @@ return (
             <div className="animate-fade-in">
             
       {isMember && canPost && canUserPost(currentUser?.id ?? 0) && !uploadState?.isUploading && (
-  <div className="bg-[#0F172A] rounded-xl p-3 mb-4 border border-[#1E293B] shadow-sm flex gap-3 items-center cursor-pointer mx-0 transition-colors hover:bg-[#141E33]" onClick={() => { 
-    if (activeGroup?.category === 'buy_sell') { 
-      setPostMetadata({ currency: 'USD', condition: 'Used - Good', location: '', price: '', status: 'available' }); 
-    } else { 
-      setPostMetadata({}); 
-    } 
-    setShowGroupPostModal(true); 
-  }}>
-    <img src={avatarFrom(currentUser)} className="w-10 h-10 rounded-full bg-[#1E293B] object-cover" alt="" />
-    <div className="flex-1 bg-[#1E293B] transition-colors rounded-full px-4 py-2.5">
-      <span className="text-[#94A3B8] text-[18px]">
-        {activeGroup.category === 'buy_sell' && 'Sell something in '}
-        {activeGroup.category === 'recruitment' && 'Post a job in '}
-        {activeGroup.category === 'general' && 'Post something in '}
-        {activeGroup.name}...
-      </span>
-    </div>
-    <div className="text-[#45BD62] hover:bg-[#141E33] p-2 rounded-full transition-colors">
-      <i className="fas fa-images text-xl"></i>
-    </div>
-  </div>
-)}
+        <div 
+          className="bg-[#0F172A] rounded-2xl p-4 sm:p-5 mb-5 border border-[#1E293B] shadow-md transition-all hover:border-[#334155] mx-0"
+        >
+          <div 
+            className="flex gap-3.5 items-center cursor-pointer"
+            onClick={() => { 
+              if (activeGroup?.category === 'buy_sell') { 
+                setPostMetadata({ currency: 'USD', condition: 'Used - Good', location: '', price: '', status: 'available' }); 
+              } else { 
+                setPostMetadata({}); 
+              } 
+              setShowGroupPostModal(true); 
+            }}
+          >
+            <img src={avatarFrom(currentUser)} className="w-12 h-12 rounded-full bg-[#1E293B] object-cover ring-2 ring-[#1E293B] flex-shrink-0" alt="" />
+            <div className="flex-1 bg-[#1E293B]/80 hover:bg-[#1E293B] transition-colors rounded-2xl px-5 py-3.5 flex items-center justify-between border border-[#334155]/40">
+              <span className="text-[#94A3B8] text-base md:text-lg font-normal truncate">
+                {activeGroup.category === 'buy_sell' && `Sell something in ${activeGroup.name}...`}
+                {activeGroup.category === 'recruitment' && `Post a job opportunity in ${activeGroup.name}...`}
+                {activeGroup.category !== 'buy_sell' && activeGroup.category !== 'recruitment' && `Write something to ${activeGroup.name}...`}
+              </span>
+              <i className="fas fa-pen text-[#64748B] text-sm ml-2"></i>
+            </div>
+          </div>
+
+          <div className="border-t border-[#1E293B]/70 mt-3.5 pt-3 flex items-center justify-around sm:justify-start sm:gap-6 text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setShowGroupPostModal(true);
+                setTimeout(() => handlePostImageClick(), 100);
+              }}
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl hover:bg-[#141E33] text-[#CBD5E1] font-semibold transition-colors"
+            >
+              <i className="fas fa-images text-[#45BD62] text-lg"></i>
+              <span>Photo/Video</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowEventModal(true)}
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl hover:bg-[#141E33] text-[#CBD5E1] font-semibold transition-colors"
+            >
+              <i className="fas fa-calendar-plus text-[#1877f2] text-lg"></i>
+              <span>Event</span>
+            </button>
+            {activeGroup.category === 'buy_sell' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPostMetadata({ currency: 'USD', condition: 'Used - Good', location: '', price: '', status: 'available' });
+                  setShowGroupPostModal(true);
+                }}
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl hover:bg-[#141E33] text-[#CBD5E1] font-semibold transition-colors"
+              >
+                <i className="fas fa-tag text-[#F7B928] text-lg"></i>
+                <span>Sell Item</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
               
               <div className="space-y-4">
                 {activeGroup.type === 'private' && !isMember ? (
@@ -4536,117 +4695,142 @@ return (
         
         {/* Create Post Modal */}
         {showGroupPostModal && (
-          <div className="fixed inset-0 z-[150] bg-[#050B18] flex flex-col animate-slide-up font-sans">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E293B] bg-[#0F172A]">
-              <div className="flex items-center gap-3">
-                <i className="fas fa-arrow-left text-[#F8FAFC] text-xl cursor-pointer" onClick={() => setShowGroupPostModal(false)}></i>
-                <h3 className="text-[#F8FAFC] text-[18px] font-bold">
-                  {activeGroup.category === 'buy_sell' && 'Sell an Item'}
-                  {activeGroup.category === 'recruitment' && 'Post a Job'}
-                  {activeGroup.category === 'general' && 'Create Post'}
-                </h3>
-              </div>
-            </div>
-            
-            <div className="flex-1 flex flex-col overflow-y-auto">
-              <div className="p-6 flex items-center gap-4">
-                <img src={avatarFrom(currentUser)} className="w-14 h-14 rounded-full border-2 border-[#1877f2] object-cover" alt="" />
-                <div>
-                  <div className="font-black text-[#F8FAFC] text-lg">{currentUser?.name}</div>
-                  <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-widest">{activeGroup.name}</div>
+          <div className="fixed inset-0 z-[150] bg-black/75 backdrop-blur-sm flex items-center justify-center p-0 md:p-4 overflow-y-auto animate-fade-in font-sans">
+            <div className="w-full h-full md:h-auto md:max-w-2xl bg-[#0F172A] md:rounded-2xl border border-[#1E293B] shadow-2xl flex flex-col max-h-[100vh] md:max-h-[88vh] overflow-hidden animate-slide-up">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#1E293B] bg-[#0F172A]">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setShowGroupPostModal(false)}
+                    className="w-9 h-9 rounded-full hover:bg-[#1E293B] flex items-center justify-center text-[#CBD5E1] hover:text-white transition-colors"
+                  >
+                    <i className="fas fa-arrow-left text-base"></i>
+                  </button>
+                  <h3 className="text-[#F8FAFC] text-lg font-bold">
+                    {activeGroup.category === 'buy_sell' && 'Sell an Item'}
+                    {activeGroup.category === 'recruitment' && 'Post a Job Opening'}
+                    {activeGroup.category !== 'buy_sell' && activeGroup.category !== 'recruitment' && 'Create Group Post'}
+                  </h3>
                 </div>
-              </div>
-              
-              {/* Buy & Sell Fields */}
-              {activeGroup.category === 'buy_sell' && (
-                <div className="px-6 mb-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[#94A3B8] text-xs mb-1">Price</label>
-                      <div className="flex gap-2">
-                        <select value={postMetadata.currency || 'USD'} onChange={(e) => setPostMetadata({ ...postMetadata, currency: e.target.value })} className="w-24 bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none">
-                          {CURRENCY_OPTIONS.map(currency => (<option key={currency.code} value={currency.code}>{currency.code}</option>))}
-                        </select>
-                        <input type="number" value={postMetadata.price || ''} onChange={(e) => setPostMetadata({ ...postMetadata, price: e.target.value })} className="flex-1 bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="29.99" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[#94A3B8] text-xs mb-1">Condition</label>
-                      <select value={postMetadata.condition || 'Used - Good'} onChange={(e) => setPostMetadata({ ...postMetadata, condition: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none">
-                        <option>New</option><option>Like New</option><option>Used - Like New</option><option>Used - Good</option><option>Used - Fair</option><option>For Parts/Not Working</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[#94A3B8] text-xs mb-1">Location</label>
-                    <input type="text" value={postMetadata.location || ''} onChange={(e) => setPostMetadata({ ...postMetadata, location: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="City, State" />
-                  </div>
-                </div>
-              )}
-              
-              {/* Recruitment Fields */}
-              {activeGroup.category === 'recruitment' && (
-                <div className="px-6 mb-4 space-y-3">
-                  <div><label className="block text-[#94A3B8] text-xs mb-1">Job Title</label><input type="text" value={postMetadata.job_title || ''} onChange={(e) => setPostMetadata({ ...postMetadata, job_title: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="e.g. Customer Service" /></div>
-                  <div><label className="block text-[#94A3B8] text-xs mb-1">Company</label><input type="text" value={postMetadata.company || ''} onChange={(e) => setPostMetadata({ ...postMetadata, company: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="Company name" /></div>
-                  <div><label className="block text-[#94A3B8] text-xs mb-1">Street Address</label><input type="text" value={postMetadata.street || ''} onChange={(e) => setPostMetadata({ ...postMetadata, street: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="Street address" /></div>
-                  <div className="grid grid-cols-2 gap-3"><div><label className="block text-[#94A3B8] text-xs mb-1">District</label><input type="text" value={postMetadata.district || ''} onChange={(e) => setPostMetadata({ ...postMetadata, district: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="District" /></div><div><label className="block text-[#94A3B8] text-xs mb-1">Region</label><input type="text" value={postMetadata.region || ''} onChange={(e) => setPostMetadata({ ...postMetadata, region: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="Region/State" /></div></div>
-                  <div><label className="block text-[#94A3B8] text-xs mb-1">Country</label><input type="text" value={postMetadata.country || ''} onChange={(e) => setPostMetadata({ ...postMetadata, country: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="Country" /></div>
-                  <div className="grid grid-cols-2 gap-3"><div><label className="block text-[#94A3B8] text-xs mb-1">Job Type</label><select value={postMetadata.job_type || 'Full-time'} onChange={(e) => setPostMetadata({ ...postMetadata, job_type: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none"><option>Full-time</option><option>Part-time</option><option>Contract</option><option>Internship</option><option>Freelance</option></select></div><div><label className="block text-[#94A3B8] text-xs mb-1">Salary Range</label><input type="text" value={postMetadata.salary || ''} onChange={(e) => setPostMetadata({ ...postMetadata, salary: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="e.g. TSh 100,000 - 700,000" /></div></div>
-                  <div><label className="block text-[#94A3B8] text-xs mb-1">Expiry Date</label><input type="date" value={postMetadata.expiry_date || ''} onChange={(e) => setPostMetadata({ ...postMetadata, expiry_date: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" /></div>
-                  <div><label className="block text-[#94A3B8] text-xs mb-1">How should applicants apply?</label><div className="flex gap-4 mb-2"><label className="flex items-center gap-2 text-[#F8FAFC]"><input type="radio" name="applicationType" value="email" checked={postMetadata.application_type === 'email'} onChange={(e) => setPostMetadata({ ...postMetadata, application_type: e.target.value, application_value: '' })} className="accent-[#1877f2]" /><span>Email</span></label><label className="flex items-center gap-2 text-[#F8FAFC]"><input type="radio" name="applicationType" value="link" checked={postMetadata.application_type === 'link'} onChange={(e) => setPostMetadata({ ...postMetadata, application_type: e.target.value, application_value: '' })} className="accent-[#1877f2]" /><span>External Link</span></label></div>
-                  {postMetadata.application_type === 'email' && (<input type="email" value={postMetadata.application_value || ''} onChange={(e) => setPostMetadata({ ...postMetadata, application_value: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="Enter email address for applications" />)}
-                  {postMetadata.application_type === 'link' && (<input type="url" value={postMetadata.application_value || ''} onChange={(e) => setPostMetadata({ ...postMetadata, application_value: e.target.value })} className="w-full bg-[#1E293B] border border-[#1E293B] rounded-lg p-2 text-[#F8FAFC] outline-none" placeholder="Enter application link" />)}</div>
-                </div>
-              )}
-              
-              {/* Text Content */}
-              <div className="p-6 min-h-[200px] flex-1">
-                <textarea className="w-full bg-transparent outline-none text-[#F8FAFC] placeholder-[#64748B] resize-none text-[28px] font-medium leading-tight whitespace-pre-wrap" placeholder={
-                  activeGroup.category === 'buy_sell' ? "Describe what you're selling (optional)..." : 
-                  activeGroup.category === 'recruitment' ? "Describe the position and requirements (optional)..." : 
-                  "Share something with the community..."
-                } value={postContent} onChange={e => setPostContent(e.target.value)} rows={5} />
-              </div>
-              
-              {/* File Previews */}
-              {previews.length > 0 && (
-                <div className="px-6 mb-4">
-                  <div className="grid grid-cols-4 gap-2">
-                    {previews.slice(0, 4).map((preview, index) => (
-                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden group">
-                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
-                        <button onClick={() => handleRemoveFile(index)} className="absolute top-1 right-1 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i className="fas fa-times text-white text-xs"></i></button>
-                      </div>
-                    ))}
-                    {previews.length > 4 && (<div className="aspect-square rounded-lg bg-[#1E293B] flex items-center justify-center"><span className="text-[#F8FAFC] font-bold text-lg">+{previews.length - 4}</span></div>)}
-                  </div>
-                </div>
-              )}
-              
-              {/* Action Buttons */}
-              <div className="border-t border-[#1E293B] bg-[#0F172A] p-2">
-                <div 
-                  className="flex items-center gap-4 p-4 hover:bg-[#141E33] rounded-2xl cursor-pointer transition-all border border-transparent hover:border-[#1E293B]" 
-                  onClick={handlePostImageClick}
+                <button 
+                  onClick={() => setShowGroupPostModal(false)}
+                  className="w-9 h-9 rounded-full hover:bg-[#1E293B] text-[#94A3B8] hover:text-white flex items-center justify-center transition-colors hidden md:flex"
                 >
-                  <div className="w-10 h-10 bg-[#45BD62]/10 rounded-full flex items-center justify-center text-[#45BD62]">
-                    <i className="fas fa-images text-xl"></i>
-                  </div>
-                  <span className="text-[#F8FAFC] font-black text-lg">
-                    {postFiles.length > 0 ? `${postFiles.length} photo${postFiles.length > 1 ? 's' : ''} selected` : 'Add Photos'}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Submit Button */}
-              <div className="p-6 bg-[#0F172A]">
-                <button onClick={handlePostSubmit} disabled={!postContent.trim() && postFiles.length === 0} className="w-full bg-[#1877f2] text-white font-black text-xl py-4 rounded-2xl hover:bg-[#166fe5] disabled:opacity-50 transition-all shadow-2xl active:scale-95 disabled:cursor-not-allowed">
-                  {activeGroup.category === 'buy_sell' ? 'LIST ITEM' : activeGroup.category === 'recruitment' ? 'POST JOB' : 'POST TO FEED'}
+                  <i className="fas fa-times"></i>
                 </button>
               </div>
+              
+              <div className="flex-1 flex flex-col overflow-y-auto">
+                <div className="p-5 flex items-center gap-3.5 border-b border-[#1E293B]/40">
+                  <img src={avatarFrom(currentUser)} className="w-12 h-12 rounded-full border-2 border-[#1877f2] object-cover flex-shrink-0" alt="" />
+                  <div className="min-w-0">
+                    <div className="font-bold text-[#F8FAFC] text-base truncate">{currentUser?.name}</div>
+                    <div className="text-[#1877f2] text-xs font-semibold flex items-center gap-1.5 mt-0.5 truncate">
+                      <i className="fas fa-users text-[10px]"></i>
+                      <span>Posting to {activeGroup.name}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Buy & Sell Fields */}
+                {activeGroup.category === 'buy_sell' && (
+                  <div className="px-5 pt-4 space-y-3.5 border-b border-[#1E293B]/50 pb-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[#94A3B8] text-xs font-semibold mb-1">Price</label>
+                        <div className="flex gap-2">
+                          <select value={postMetadata.currency || 'USD'} onChange={(e) => setPostMetadata({ ...postMetadata, currency: e.target.value })} className="w-24 bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none">
+                            {CURRENCY_OPTIONS.map(currency => (<option key={currency.code} value={currency.code}>{currency.code}</option>))}
+                          </select>
+                          <input type="number" value={postMetadata.price || ''} onChange={(e) => setPostMetadata({ ...postMetadata, price: e.target.value })} className="flex-1 bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B]" placeholder="Price" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[#94A3B8] text-xs font-semibold mb-1">Condition</label>
+                        <select value={postMetadata.condition || 'Used - Good'} onChange={(e) => setPostMetadata({ ...postMetadata, condition: e.target.value })} className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none">
+                          <option>New</option><option>Like New</option><option>Used - Like New</option><option>Used - Good</option><option>Used - Fair</option><option>For Parts/Not Working</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[#94A3B8] text-xs font-semibold mb-1">Location</label>
+                      <input type="text" value={postMetadata.location || ''} onChange={(e) => setPostMetadata({ ...postMetadata, location: e.target.value })} className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B]" placeholder="City, State / Area" />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Recruitment Fields */}
+                {activeGroup.category === 'recruitment' && (
+                  <div className="px-5 pt-4 space-y-3 border-b border-[#1E293B]/50 pb-4">
+                    <div><label className="block text-[#94A3B8] text-xs font-semibold mb-1">Job Title</label><input type="text" value={postMetadata.job_title || ''} onChange={(e) => setPostMetadata({ ...postMetadata, job_title: e.target.value })} className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B]" placeholder="e.g. Senior Frontend Engineer" /></div>
+                    <div><label className="block text-[#94A3B8] text-xs font-semibold mb-1">Company</label><input type="text" value={postMetadata.company || ''} onChange={(e) => setPostMetadata({ ...postMetadata, company: e.target.value })} className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B]" placeholder="Company name" /></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="block text-[#94A3B8] text-xs font-semibold mb-1">Job Type</label><select value={postMetadata.job_type || 'Full-time'} onChange={(e) => setPostMetadata({ ...postMetadata, job_type: e.target.value })} className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none"><option>Full-time</option><option>Part-time</option><option>Contract</option><option>Internship</option><option>Freelance</option></select></div>
+                      <div><label className="block text-[#94A3B8] text-xs font-semibold mb-1">Salary Range</label><input type="text" value={postMetadata.salary || ''} onChange={(e) => setPostMetadata({ ...postMetadata, salary: e.target.value })} className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B]" placeholder="e.g. $70k - $90k" /></div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Large, Professional Typing Area */}
+                <div className="p-5 min-h-[260px] md:min-h-[320px] flex-1 flex flex-col">
+                  <textarea 
+                    className="w-full flex-1 bg-transparent outline-none text-[#F8FAFC] placeholder-[#64748B] resize-none text-base md:text-lg leading-relaxed font-normal min-h-[240px]" 
+                    placeholder={
+                      activeGroup.category === 'buy_sell' ? "Describe your item in detail (features, condition, specifications, warranty, why you're selling)..." : 
+                      activeGroup.category === 'recruitment' ? "Describe the role, responsibilities, requirements, qualifications, and how to apply..." : 
+                      `What's on your mind? Share thoughts, ask questions, or contribute to ${activeGroup.name}...`
+                    } 
+                    value={postContent} 
+                    onChange={e => setPostContent(e.target.value)} 
+                    rows={8} 
+                    autoFocus
+                  />
+                </div>
+                
+                {/* File Previews */}
+                {previews.length > 0 && (
+                  <div className="px-5 mb-4">
+                    <div className="grid grid-cols-4 gap-2.5">
+                      {previews.slice(0, 4).map((preview, index) => (
+                        <div key={index} className="relative aspect-square rounded-xl overflow-hidden group border border-[#1E293B]">
+                          <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                          <button onClick={() => handleRemoveFile(index)} className="absolute top-1.5 right-1.5 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors"><i className="fas fa-times text-xs"></i></button>
+                        </div>
+                      ))}
+                      {previews.length > 4 && (<div className="aspect-square rounded-xl bg-[#1E293B] border border-[#334155] flex items-center justify-center"><span className="text-[#F8FAFC] font-bold text-lg">+{previews.length - 4}</span></div>)}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Action Buttons Toolbar */}
+                <div className="border-t border-[#1E293B] bg-[#0B1120] p-3 px-5 flex items-center justify-between">
+                  <span className="text-xs text-[#94A3B8] font-semibold">Add to your post</span>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="button"
+                      className="flex items-center gap-2 px-3.5 py-2 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors border border-transparent hover:border-[#334155]" 
+                      onClick={handlePostImageClick}
+                    >
+                      <i className="fas fa-images text-[#45BD62] text-lg"></i>
+                      <span className="text-sm font-semibold text-[#CBD5E1]">
+                        {postFiles.length > 0 ? `${postFiles.length} photo${postFiles.length > 1 ? 's' : ''}` : 'Photos'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Submit Button */}
+                <div className="p-5 border-t border-[#1E293B] bg-[#0F172A]">
+                  <button 
+                    onClick={handlePostSubmit} 
+                    disabled={!postContent.trim() && postFiles.length === 0} 
+                    className="w-full bg-[#1877f2] text-white font-bold text-base py-3.5 rounded-xl hover:bg-[#166fe5] disabled:opacity-50 transition-all shadow-lg active:scale-95 disabled:cursor-not-allowed"
+                  >
+                    {activeGroup.category === 'buy_sell' ? 'List Item in Group' : activeGroup.category === 'recruitment' ? 'Post Job' : 'Post to Community'}
+                  </button>
+                </div>
+              </div>
+              <input type="file" ref={postFileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
             </div>
-            <input type="file" ref={postFileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
           </div>
         )}
         
@@ -4664,42 +4848,258 @@ return (
 
 {/* Invite Modal */}
 {showInviteModal && activeGroup && (
-  <div className="fixed inset-0 z-[210] bg-black/60 flex items-end md:items-center md:justify-center" onClick={() => setShowInviteModal(false)}>
-    <div className="w-full md:max-w-[520px] bg-[#0F172A] rounded-t-2xl md:rounded-2xl border border-[#1E293B] max-h-[85vh] overflow-hidden animate-slide-up" onClick={(e) => e.stopPropagation()}>
-      <div className="px-4 py-3 border-b border-[#1E293B] flex items-center justify-between">
-        <div><div className="text-[#F8FAFC] font-bold text-lg">Invite to group</div><div className="text-[#94A3B8] text-sm">{activeGroup.name}</div></div>
-        <button onClick={() => setShowInviteModal(false)} className="w-9 h-9 rounded-full hover:bg-[#141E33] text-[#F8FAFC]"><i className="fas fa-times"></i></button>
+  <div className="fixed inset-0 z-[210] bg-black/65 backdrop-blur-sm flex items-end md:items-center md:justify-center p-0 md:p-4 animate-fade-in" onClick={() => setShowInviteModal(false)}>
+    <div className="w-full md:max-w-[520px] bg-[#0F172A] rounded-t-3xl md:rounded-2xl border border-[#1E293B] max-h-[85vh] flex flex-col overflow-hidden animate-slide-up shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="px-5 py-4 border-b border-[#1E293B] flex items-center justify-between">
+        <div>
+          <div className="text-[#F8FAFC] font-bold text-lg">Invite Followers</div>
+          <div className="text-[#94A3B8] text-xs mt-0.5">{activeGroup.name}</div>
+        </div>
+        <button onClick={() => setShowInviteModal(false)} className="w-9 h-9 rounded-full hover:bg-[#141E33] text-[#94A3B8] hover:text-white flex items-center justify-center transition-colors">
+          <i className="fas fa-times"></i>
+        </button>
       </div>
-      <div className="p-4 border-b border-[#1E293B]"><div className="relative"><i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] text-sm"></i><input value={inviteSearch} onChange={(e) => setInviteSearch(e.target.value)} placeholder="Search people" className="w-full bg-[#1E293B] rounded-full pl-9 pr-4 py-2.5 outline-none text-[15px] text-[#F8FAFC] placeholder-[#64748B]" /></div></div>
-      <div className="overflow-y-auto max-h-[60vh] p-2">
+      <div className="p-4 border-b border-[#1E293B] bg-[#0B1120]">
+        <div className="relative">
+          <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8] text-sm"></i>
+          <input 
+            value={inviteSearch} 
+            onChange={(e) => {
+              setInviteSearch(e.target.value);
+              setInviteLimit(10);
+            }} 
+            placeholder="Search followers by name or username..." 
+            className="w-full bg-[#1E293B] border border-[#334155]/60 focus:border-[#1877f2] rounded-xl pl-10 pr-4 py-2.5 outline-none text-sm text-[#F8FAFC] placeholder-[#64748B] transition-colors" 
+          />
+          {inviteSearch && (
+            <button onClick={() => setInviteSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#CBD5E1] text-xs">
+              <i className="fas fa-times-circle"></i>
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="overflow-y-auto max-h-[55vh] p-2 space-y-1">
         {inviteableUsers.length > 0 ? (
-          inviteableUsers.map((user: any) => {
-            const loading = invitingUserIds.includes(user.id);
-            const isInvited = user.isInvited === true;
-            
-            return (
-              <div key={user.id} className="flex items-center justify-between p-3 hover:bg-[#141E33] rounded-lg transition-colors">
-                <div className="flex items-center gap-3 cursor-pointer" onClick={() => onProfileClick?.(user.id)}>
-                  <img src={avatarFrom(user)} className="w-12 h-12 rounded-full object-cover" alt="" />
-                  <div><div className="text-[#F8FAFC] font-bold">{user.name || user.username}</div><div className="text-[#94A3B8] text-sm">@{user.username || 'user'}</div></div>
+          <>
+            {inviteableUsers.slice(0, inviteLimit).map((user: any) => {
+              const loading = invitingUserIds.includes(user.id);
+              const isInvited = user.isInvited === true || locallyInvitedUserIds.includes(Number(user.id));
+              
+              return (
+                <div key={user.id} className="flex items-center justify-between p-3 hover:bg-[#141E33] rounded-xl transition-colors">
+                  <div className="flex items-center gap-3 cursor-pointer min-w-0 flex-1 mr-3" onClick={() => onProfileClick?.(user.id)}>
+                    <img src={avatarFrom(user)} className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-[#1E293B]" alt="" />
+                    <div className="min-w-0">
+                      <div className="text-[#F8FAFC] font-bold text-sm truncate">{user.name || user.username}</div>
+                      <div className="text-[#94A3B8] text-xs truncate">@{user.username || 'user'}</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => !isInvited && !loading && handleInviteUser(user.id)} 
+                    disabled={isInvited || loading}
+                    className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                      isInvited 
+                        ? 'bg-[#1E293B] text-[#94A3B8] cursor-not-allowed border border-[#334155]/40'
+                        : 'bg-[#1877f2] text-white hover:bg-[#166fe5] shadow-sm active:scale-95'
+                    } disabled:opacity-75`}
+                  >
+                    {loading ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin text-xs"></i>
+                        <span>Inviting...</span>
+                      </>
+                    ) : isInvited ? (
+                      <>
+                        <i className="fas fa-check text-xs"></i>
+                        <span>Invited</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-user-plus text-xs"></i>
+                        <span>Invite</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <button 
-                  onClick={() => !isInvited && !loading && handleInviteUser(user.id)} 
-                  disabled={isInvited || loading}
-                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
-                    isInvited 
-                      ? 'bg-[#1E293B] text-[#94A3B8] cursor-not-allowed'
-                      : 'bg-[#1877f2] text-white hover:bg-[#166fe5]'
-                  } disabled:opacity-50`}
+              );
+            })}
+
+            {inviteableUsers.length > inviteLimit && (
+              <div className="pt-2 pb-1 px-3 text-center">
+                <button
+                  type="button"
+                  onClick={() => setInviteLimit(prev => prev + 10)}
+                  className="w-full py-2.5 rounded-xl bg-[#1E293B] hover:bg-[#334155] text-[#1877f2] hover:text-white font-bold text-xs transition-colors flex items-center justify-center gap-2"
                 >
-                  {loading ? 'Sending...' : (isInvited ? 'Invited' : 'Invite')}
+                  <span>See More</span>
+                  <span className="text-[11px] text-[#94A3B8]">({inviteableUsers.length - inviteLimit} remaining)</span>
+                  <i className="fas fa-chevron-down text-[10px]"></i>
                 </button>
               </div>
-            );
-          })
+            )}
+          </>
         ) : (
-          <div className="py-12 text-center text-[#94A3B8]">No users available to invite.</div>
+          <div className="py-12 text-center text-[#94A3B8] text-sm">
+            <i className="fas fa-user-friends text-3xl mb-3 text-[#334155] block"></i>
+            {inviteSearch ? 'No followers match your search.' : 'No followers available to invite.'}
+          </div>
         )}
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Professional Share Group Modal with Copy Link */}
+{showShareGroupModal && activeGroup && (
+  <div 
+    className="fixed inset-0 z-[220] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in font-sans"
+    onClick={() => setShowShareGroupModal(false)}
+  >
+    <div 
+      className="bg-[#0F172A] w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl border border-[#1E293B] overflow-hidden shadow-2xl animate-slide-up"
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#1E293B]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-[#1877f2]/15 text-[#1877f2] flex items-center justify-center text-sm">
+            <i className="fas fa-share-alt"></i>
+          </div>
+          <h3 className="text-base font-bold text-[#F8FAFC]">Share Group</h3>
+        </div>
+        <button 
+          onClick={() => setShowShareGroupModal(false)}
+          className="w-8 h-8 rounded-full hover:bg-[#1E293B] text-[#94A3B8] hover:text-white flex items-center justify-center transition-colors"
+        >
+          <i className="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Group Preview Card */}
+        <div className="flex items-center gap-3.5 p-3 rounded-xl bg-[#1E293B]/60 border border-[#334155]/40">
+          <img 
+            src={activeGroup.cover_image || activeGroup.image_url || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400'} 
+            alt={activeGroup.name}
+            className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-[#334155]"
+          />
+          <div className="min-w-0 flex-1">
+            <h4 className="font-bold text-[#F8FAFC] text-sm truncate">{activeGroup.name}</h4>
+            <p className="text-xs text-[#94A3B8] flex items-center gap-1.5 mt-0.5">
+              <span className="capitalize">{activeGroup.type || 'public'} group</span>
+              <span>•</span>
+              <span>{(Array.isArray(activeGroup.members) ? activeGroup.members.length : activeGroup.members_count) || 1} members</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Copy Link Section */}
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-[#94A3B8] mb-2">Group Link</label>
+          <div className="flex items-center gap-2 bg-[#1E293B] border border-[#334155] rounded-xl p-2 pl-3">
+            <i className="fas fa-link text-[#94A3B8] text-sm flex-shrink-0"></i>
+            <input 
+              readOnly 
+              value={getGroupShareLink(activeGroup)} 
+              className="bg-transparent text-sm text-[#CBD5E1] outline-none flex-1 truncate select-all"
+            />
+            <button
+              onClick={async () => {
+                const link = getGroupShareLink(activeGroup);
+                try {
+                  await navigator.clipboard.writeText(link);
+                  setCopiedGroupLink(true);
+                  setTimeout(() => setCopiedGroupLink(false), 3000);
+                } catch {
+                  const input = document.createElement('input');
+                  input.value = link;
+                  document.body.appendChild(input);
+                  input.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(input);
+                  setCopiedGroupLink(true);
+                  setTimeout(() => setCopiedGroupLink(false), 3000);
+                }
+              }}
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                copiedGroupLink 
+                  ? 'bg-[#10B981] text-white shadow-md shadow-[#10B981]/20' 
+                  : 'bg-[#1877f2] hover:bg-[#166fe5] text-white active:scale-95'
+              }`}
+            >
+              <i className={`fas ${copiedGroupLink ? 'fa-check' : 'fa-copy'}`}></i>
+              <span>{copiedGroupLink ? 'Copied!' : 'Copy link'}</span>
+            </button>
+          </div>
+          {copiedGroupLink && (
+            <p className="text-xs text-[#10B981] font-semibold mt-2 flex items-center gap-1 animate-fade-in">
+              <i className="fas fa-check-circle"></i> Group link copied to clipboard successfully!
+            </p>
+          )}
+        </div>
+
+        {/* Quick External Share Actions */}
+        <div className="pt-2 border-t border-[#1E293B]">
+          <span className="block text-xs font-semibold text-[#94A3B8] mb-3">Or share via</span>
+          <div className="grid grid-cols-4 gap-2">
+            <button
+              onClick={() => {
+                const url = `https://wa.me/?text=${encodeURIComponent(`Join ${activeGroup.name} on UNERA: ${getGroupShareLink(activeGroup)}`)}`;
+                window.open(url, '_blank');
+              }}
+              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#25D366] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#25D366]/15 text-[#25D366] flex items-center justify-center text-lg">
+                <i className="fab fa-whatsapp"></i>
+              </div>
+              <span className="text-[11px] font-medium">WhatsApp</span>
+            </button>
+            <button
+              onClick={() => {
+                const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join ${activeGroup.name} on UNERA`)}&url=${encodeURIComponent(getGroupShareLink(activeGroup))}`;
+                window.open(url, '_blank');
+              }}
+              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#1DA1F2] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#1DA1F2]/15 text-[#1DA1F2] flex items-center justify-center text-lg">
+                <i className="fab fa-twitter"></i>
+              </div>
+              <span className="text-[11px] font-medium">Twitter/X</span>
+            </button>
+            <button
+              onClick={() => {
+                const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getGroupShareLink(activeGroup))}`;
+                window.open(url, '_blank');
+              }}
+              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#1877F2] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#1877F2]/15 text-[#1877F2] flex items-center justify-center text-lg">
+                <i className="fab fa-facebook-f"></i>
+              </div>
+              <span className="text-[11px] font-medium">Facebook</span>
+            </button>
+            <button
+              onClick={async () => {
+                const link = getGroupShareLink(activeGroup);
+                if (navigator.share) {
+                  try {
+                    await navigator.share({ title: activeGroup.name, url: link });
+                  } catch {}
+                } else {
+                  await navigator.clipboard.writeText(link);
+                  setCopiedGroupLink(true);
+                  setTimeout(() => setCopiedGroupLink(false), 3000);
+                }
+              }}
+              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-white transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#1E293B] text-[#CBD5E1] flex items-center justify-center text-lg">
+                <i className="fas fa-ellipsis-h"></i>
+              </div>
+              <span className="text-[11px] font-medium">More</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
