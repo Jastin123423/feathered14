@@ -25,7 +25,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     const admin_id = toNum(body.admin_id, 0);
     const name = safeString(body.name).trim();
-    const description = safeString(body.description).trim();
+    const description = safeString(body.description || "").trim();
     const type = safeString(body.type || "public").trim().toLowerCase();
     const cover_image = body.cover_image ? safeString(body.cover_image).trim() : null;
     const profile_image = body.profile_image ? safeString(body.profile_image).trim() : null;
@@ -33,7 +33,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     if (!admin_id) return bad("admin_id is required");
     if (!name) return bad("name is required");
-    if (!description) return bad("description is required");
     if (!(type === "public" || type === "private")) {
       return bad("type must be public or private");
     }

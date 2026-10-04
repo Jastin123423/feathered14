@@ -715,28 +715,28 @@ export const NotificationsPage: React.FC<Props> = ({
 
           {/* Text Area */}
           <div className="flex-1 min-w-0 pr-1">
-            <div className="text-[16px] md:text-[17px] leading-snug break-words">
+            <div className="leading-snug break-words">
               <span
                 onClick={(e) => {
                   e.stopPropagation();
                   onProfileClick(actor?.id || 0);
                 }}
-                className={`cursor-pointer hover:underline ${
+                className={`cursor-pointer hover:underline text-[21px] ${
                   isUnread
                     ? "font-bold text-white"
                     : "font-semibold text-[#F8FAFC]"
                 }`}
-                style={{ fontSize: "17.5px" }}
+                style={{ fontSize: "21px" }}
               >
                 {actorName}
               </span>
               <span
-                className={`select-text ml-1.5 ${
+                className={`select-text ml-1.5 text-[20px] ${
                   isUnread
                     ? "font-normal text-[#F1F5F9]"
                     : "font-normal text-[#CBD5E1]"
                 }`}
-                style={{ fontSize: "16.5px" }}
+                style={{ fontSize: "20px" }}
               >
                 {messageParts.middle}
               </span>

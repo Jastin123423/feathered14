@@ -124,7 +124,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
               className="w-12 h-12 rounded-xl object-cover border border-[#1E293B]"
             />
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-[#F8FAFC] text-base truncate">{currentUser.name}</span>
+              <span className="font-bold text-[#F8FAFC] text-[21px] truncate">{currentUser.name}</span>
               <span className="text-[#1877F2] text-xs font-medium">View your profile →</span>
             </div>
           </div>
@@ -143,7 +143,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
                 <i className={`${item.icon} text-[20px]`} style={{ color: item.color }}></i>
               </div>
               <div>
-                <h4 className="font-semibold text-[#F8FAFC] text-[15px] leading-tight mb-0.5 group-hover:text-[#1877F2] transition-colors">
+                <h4 className="font-semibold text-[#F8FAFC] text-[20px] leading-tight mb-0.5 group-hover:text-[#1877F2] transition-colors">
                   {item.title}
                 </h4>
               </div>
@@ -162,7 +162,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
             >
               <div className="flex items-center gap-3">
                 <i className={`${item.icon} text-[#94A3B8] text-lg w-6 text-center`}></i>
-                <span className="text-[#F8FAFC] font-medium text-[15px]">{item.title}</span>
+                <span className="text-[#F8FAFC] font-medium text-[20px]">{item.title}</span>
               </div>
               <i className="fas fa-chevron-right text-[#64748B] text-xs"></i>
             </div>
@@ -174,7 +174,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
           >
             <div className="flex items-center gap-3">
               <i className="fas fa-sign-out-alt text-lg w-6 text-center"></i>
-              <span className="font-medium text-[15px]">Log Out</span>
+              <span className="font-medium text-[20px]">Log Out</span>
             </div>
           </div>
         </div>
@@ -1080,7 +1080,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-11 h-11 rounded-xl object-cover border border-[#1E293B]"
             />
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-[15px] text-[#F8FAFC] truncate">{currentUser.name}</span>
+              <span className="font-bold text-[21px] text-[#F8FAFC] truncate">{currentUser.name}</span>
               <span className="text-[#1877F2] text-xs font-medium">View your profile</span>
             </div>
           </div>
@@ -1097,7 +1097,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-8 h-8 rounded-lg bg-[#EF4444]/10 flex items-center justify-center">
               <i className="fas fa-sign-out-alt text-sm"></i>
             </div>
-            <span className="font-medium text-[14px]">Log Out</span>
+            <span className="font-medium text-[20px]">Log Out</span>
           </div>
         </div>
       )}

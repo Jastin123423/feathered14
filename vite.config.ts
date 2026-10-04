@@ -960,6 +960,34 @@ function apiDevPlugin(): Plugin {
         }
 
         if (pathname === '/api/groups') {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            return req.on('end', () => {
+              try {
+                const parsed = JSON.parse(body || '{}');
+                const newGroup = {
+                  id: Date.now(),
+                  name: parsed.name,
+                  description: parsed.description || '',
+                  type: parsed.type || 'public',
+                  category: parsed.category || 'general',
+                  admin_id: parsed.admin_id,
+                  members_count: 1,
+                  is_member: true,
+                  members: [parsed.admin_id],
+                  cover_image: parsed.cover_image,
+                  profile_image: parsed.profile_image,
+                  created_at: new Date().toISOString()
+                };
+                res.statusCode = 200;
+                return res.end(JSON.stringify({ success: true, group_id: newGroup.id, group: newGroup }));
+              } catch {
+                res.statusCode = 200;
+                return res.end(JSON.stringify({ success: true }));
+              }
+            });
+          }
           res.statusCode = 200;
           return res.end(JSON.stringify([]));
         }
