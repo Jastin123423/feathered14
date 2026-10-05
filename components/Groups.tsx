@@ -321,8 +321,13 @@ const ExpandableRichText: React.FC<{
     <div style={{ fontSize: `${fontSizePx}px` }} className="text-[#F8FAFC] leading-relaxed whitespace-pre-wrap">
       <RichText text={shownText} users={users} onProfileClick={onProfileClick} onHashtagClick={onHashtagClick} />
       {isLong && !forceExpanded && (
-        <button type="button" onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }} className="ml-2 font-bold text-[#1877F2] hover:underline">
-          {expanded ? 'See less' : 'See more'}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+          className="ml-2 font-bold text-[#1877F2] hover:text-[#38BDF8] hover:underline text-[19px] transition-colors inline-flex items-center cursor-pointer"
+          style={{ fontSize: '19px' }}
+        >
+          {expanded ? 'See Less' : 'See More'}
         </button>
       )}
     </div>
@@ -1303,7 +1308,15 @@ const RecruitmentPost: React.FC<any> = (props) => {
               <div className="mb-4">
                 <div className="text-[#F8FAFC] whitespace-pre-wrap" style={{ fontSize: '20px' }}>
                   {showFullDescription ? post.content : post.content.slice(0, 300)}
-                  {post.content.length > 300 && (<button onClick={() => setShowFullDescription(!showFullDescription)} className="ml-2 text-[#1877F2] font-bold hover:underline">{showFullDescription ? 'See less' : 'See more'}</button>)}
+                  {post.content.length > 300 && (
+                    <button
+                      onClick={() => setShowFullDescription(!showFullDescription)}
+                      className="ml-2 text-[#1877F2] hover:text-[#38BDF8] font-bold text-[19px] hover:underline transition-colors inline-flex items-center cursor-pointer"
+                      style={{ fontSize: '19px' }}
+                    >
+                      {showFullDescription ? 'See Less' : 'See More'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1583,7 +1596,27 @@ const GeneralGroupPost: React.FC<any> = ({
             </div>
           )}
         </div>
-        {p.content && (<div className="px-3 md:px-4 pb-2"><ExpandableRichText text={String(p.content)} users={users} onProfileClick={onProfileClick} onHashtagClick={onHashtagClick} maxWords={25} fontSizePx={21} onSeeMore={handleSeeMore} /></div>)}
+        {p.content && (
+          p.background && imageMedia.length === 0 && videoMedia.length === 0 ? (
+            <div
+              className="w-full min-h-[300px] md:min-h-[360px] flex items-center justify-center p-8 sm:p-12 text-center text-white font-black text-2xl sm:text-3xl md:text-4xl shadow-inner select-text my-1 leading-relaxed tracking-tight"
+              style={{
+                background: p.background,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+              }}
+            >
+              <div className="max-w-[85%] break-words whitespace-pre-wrap font-extrabold">
+                {String(p.content)}
+              </div>
+            </div>
+          ) : (
+            <div className="px-3 md:px-4 pb-2">
+              <ExpandableRichText text={String(p.content)} users={users} onProfileClick={onProfileClick} onHashtagClick={onHashtagClick} maxWords={25} fontSizePx={21} onSeeMore={handleSeeMore} />
+            </div>
+          )
+        )}
         {imageMedia.length > 0 && (<MediaGrid media={imageMedia} onOpen={(url, index) => { const urls = imageMedia.map(m => m.full || m.feed || m.url); openGallery(urls, index); }} />)}
         {videoMedia.length > 0 && (<div className="cursor-pointer relative h-[500px] bg-black" onClick={() => onVideoClick?.(post)}><video src={videoMedia[0].url} className="w-full h-full object-cover" preload="metadata" playsInline muted onError={(e) => { console.error('Failed to load video:', videoMedia[0].url); e.currentTarget.style.display = 'none'; }} /><div className="absolute inset-0 flex items-center justify-center"><i className="fas fa-play text-white text-4xl opacity-50"></i></div></div>)}
         {(finalReactionCount > 0 || commentCount > 0) && (

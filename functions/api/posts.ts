@@ -362,6 +362,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       return json({ error: "media_url must be a valid http/https URL" }, 400);
     }
 
+    const background =
+      typeof body.background === "string" && body.background.trim()
+        ? body.background.trim()
+        : null;
+    if (background) {
+      media_meta_arr.push({ type: "background", background });
+    }
+
     const media_urls_json = final_multi_urls.length
       ? JSON.stringify(final_multi_urls)
       : null;
@@ -449,6 +457,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           id: post_id,
           user_id,
           content: content || "",
+          background: background || null,
+          background_style: background || null,
           media_url: final_media_url,
           media_type: final_media_type,
           media_urls: media_urls_json,
@@ -489,9 +499,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
     const normalized = rawList.map((item: any) => {
       const media = normalizePostMedia(item);
+      const rawMeta = normalizeMediaMetaArray(item?.media_meta);
+      const bgItem = rawMeta.find((m: any) => m?.type === "background" || m?.background);
+      const background = item.background || bgItem?.background || null;
 
       return {
         ...item,
+        background,
+        background_style: background,
         media,
         media_count: media.length,
         thumb_url: media[0]?.thumb || (media[0]?.type === "image" ? item.media_url : null),

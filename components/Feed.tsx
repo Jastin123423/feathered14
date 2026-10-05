@@ -4947,9 +4947,10 @@ export const ExpandableRichText = memo(
               e.stopPropagation();
               setExpanded((v) => !v);
             }}
-            className="ml-2 font-bold text-[#1877F2] hover:underline text-[16px]"
+            className="ml-2 font-bold text-[#1877F2] hover:text-[#38BDF8] hover:underline text-[19px] transition-colors inline-flex items-center cursor-pointer"
+            style={{ fontSize: '19px' }}
           >
-            {expanded ? 'See less' : 'See more'}
+            {expanded ? 'See Less' : 'See More'}
           </button>
         )}
       </div>
@@ -8000,6 +8001,25 @@ export const Post = memo(
                 if (!textToDisplay) return null;
               }
 
+              // ✅ FULL-BLEED COLORED TEXT POST: Render text directly on the chosen color with zero container barrier
+              if (p.background && !mediaInfo.mediaUrl && !isMarketplace && !isSharedPost) {
+                return (
+                  <div
+                    className="w-full min-h-[320px] md:min-h-[380px] flex items-center justify-center p-8 sm:p-12 text-center text-white font-black text-2xl sm:text-3xl md:text-4xl shadow-inner select-text my-1 leading-relaxed tracking-tight"
+                    style={{
+                      background: p.background,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+                    }}
+                  >
+                    <div className="max-w-[85%] break-words whitespace-pre-wrap font-extrabold">
+                      {textToDisplay}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div className="px-3 md:px-4 pb-2">
                   <ExpandableRichText
@@ -8550,15 +8570,6 @@ export const Post = memo(
                     {p.link_preview.description}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {p.background && !mediaInfo.mediaUrl && !isMarketplace && !isSharedPost && (
-              <div
-                className="h-[300px] flex items-center justify-center p-8 text-center text-white font-bold text-2xl"
-                style={{ background: p.background, backgroundSize: 'cover' }}
-              >
-                {p.content}
               </div>
             )}
             
@@ -9170,31 +9181,30 @@ export const CreatePost: React.FC<{
   onVideoClick,
   onCreateEventClick,
 }) => (
-  <div className="w-full bg-[#0F172A] border-b-[8px] border-[#050B18] p-3 sm:p-4">
-    <div className="flex items-center gap-2.5 mb-2.5">
+  <div className="w-full bg-[#0F172A] border-b border-[#1E293B] p-3.5 sm:p-4">
+    <div className="flex items-center gap-3 mb-2.5">
       <img
         src={avatarFrom(currentUser)}
         alt=""
-        className="w-10 h-10 rounded-full object-cover cursor-pointer border border-[#1E293B]"
+        className="w-10 h-10 rounded-full object-cover cursor-pointer border border-[#1E293B] flex-shrink-0"
         onClick={() => onProfileClick(safeUserId(currentUser))}
       />
 
       <div
-        className="flex-1 bg-[#1E293B]/60 hover:bg-[#1E293B] border border-[#334155]/40 rounded-full px-4 py-2 cursor-pointer flex items-center transition-all group"
+        className="flex-1 bg-transparent hover:bg-transparent border-0 px-1 py-2 cursor-pointer flex items-center transition-all group"
         onClick={onClick}
       >
-        <span className="text-[#94A3B8] group-hover:text-[#F8FAFC] text-[18px] truncate transition-colors">
-          What's on your mind,{' '}
-          {String((currentUser as any).name || '').split(' ')[0] || 'there'}?
+        <span className="text-[#94A3B8] group-hover:text-[#F8FAFC] text-[20px] font-medium tracking-tight truncate transition-colors select-none">
+          What's On Your Mind?
         </span>
       </div>
 
       <button
         type="button"
         onClick={onPhotoClick}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-[#1E293B] text-[#10B981] transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-[#1E293B] text-[#10B981] transition-colors"
       >
-        <i className="fas fa-image text-[18px]"></i>
+        <i className="fas fa-image text-[19px]"></i>
         <span className="text-[14px] font-semibold text-[#CBD5E1] hidden xs:inline">Photo</span>
       </button>
     </div>
@@ -9936,23 +9946,50 @@ export const CreatePostModal = memo(
             </div>
 
             <div
-              className={`relative min-h-[150px] mb-4 transition-all ${
+              className={`relative mb-4 transition-all duration-300 ${
                 activeBackground
-                  ? 'flex items-center justify-center p-8 rounded-lg text-center min-h-[300px]'
-                  : ''
+                  ? 'w-full min-h-[320px] md:min-h-[380px] rounded-2xl flex items-center justify-center p-6 sm:p-10 shadow-inner overflow-hidden border-0'
+                  : 'min-h-[160px]'
               }`}
-              style={{ background: activeBackground, backgroundSize: 'cover' }}
+              style={
+                activeBackground
+                  ? {
+                      background: activeBackground,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }
+                  : undefined
+              }
             >
+              {activeBackground && (
+                <button
+                  type="button"
+                  onClick={() => setActiveBackground('')}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-colors shadow-md z-10 cursor-pointer"
+                  title="Remove color background"
+                >
+                  <i className="fas fa-times text-xs"></i>
+                </button>
+              )}
+
               <textarea
-                className={`w-full bg-transparent outline-none text-[#F8FAFC] placeholder-[#94A3B8] resize-none ${
+                className={`w-full bg-transparent outline-none resize-none border-0 focus:ring-0 ${
                   activeBackground
-                    ? 'text-center font-bold text-3xl drop-shadow-md placeholder-white/70'
-                    : 'text-[26px]'
+                    ? 'text-center font-black text-2xl sm:text-3xl md:text-4xl text-white drop-shadow-md placeholder-white/70 leading-relaxed tracking-tight py-4'
+                    : 'text-[#F8FAFC] placeholder-[#94A3B8] text-[24px] sm:text-[26px] leading-relaxed'
                 }`}
+                style={
+                  activeBackground
+                    ? {
+                        textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+                      }
+                    : undefined
+                }
                 placeholder="What's on your mind?"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={activeBackground ? 4 : 5}
+                autoFocus
               />
             </div>
 
