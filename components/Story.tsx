@@ -2778,6 +2778,7 @@ export const StoryReel: React.FC<StoryReelProps> = ({
         <img
           src={
             currentUser?.profile_image_url ||
+            (currentUser as any)?.avatar_url ||
             getDefaultProfilePicture(currentUser?.name || 'User', currentUser?.id || 0)
           }
           alt="Create"

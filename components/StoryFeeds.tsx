@@ -413,9 +413,9 @@ export default function StoryFeeds({
               >
                 <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full p-[2px] bg-gradient-to-tr from-blue-500 via-indigo-500 to-cyan-400 group-hover:scale-105 transition-transform">
                   <div className="w-full h-full rounded-full bg-[#0F172A] flex items-center justify-center overflow-hidden border-2 border-[#0B1120]">
-                    {currentUser?.profile_image_url ? (
+                    {(currentUser?.profile_image_url || (currentUser as any)?.avatar_url) ? (
                       <img
-                        src={currentUser.profile_image_url}
+                        src={currentUser.profile_image_url || (currentUser as any)?.avatar_url}
                         alt="Your story"
                         className="w-full h-full object-cover opacity-75 group-hover:opacity-100 transition-opacity"
                       />

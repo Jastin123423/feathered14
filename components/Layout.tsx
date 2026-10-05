@@ -6,6 +6,15 @@ import { useNavigate } from 'react-router-dom';
 import { VerifiedBadge } from './VerifiedBadge';
 import { FeatheredLogo } from './FeatheredLogo';
 
+const getUserAvatarUrl = (user: any) => {
+  const url = user?.profile_image_url || user?.avatar_url || user?.avatar;
+  if (url && typeof url === 'string' && url.trim() && url !== 'null' && url !== 'undefined') {
+    return url;
+  }
+  const name = user?.name || user?.username || 'User';
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1877F2&color=fff&bold=true`;
+};
+
 /* ============================================================
    GLOBAL ONLINE PRESENCE
 ============================================================ */
@@ -119,7 +128,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
             }}
           >
             <img
-              src={currentUser.profile_image_url}
+              src={getUserAvatarUrl(currentUser)}
               alt={currentUser.name}
               className="w-12 h-12 rounded-xl object-cover border border-[#1E293B]"
             />
@@ -757,13 +766,14 @@ export const Header: React.FC<HeaderProps> = ({
                 title={currentUser.name}
               >
                 <img
-                  src={
-                    currentUser.profile_image_url ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.username || 'User')}&background=1877F2&color=fff`
-                  }
+                  src={getUserAvatarUrl(currentUser)}
                   alt={currentUser.name}
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.username || 'User')}&background=1877F2&color=fff`;
+                    const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.username || 'User')}&background=1877F2&color=fff`;
+                    const target = e.currentTarget as HTMLImageElement;
+                    if (target.src !== fallback) {
+                      target.src = fallback;
+                    }
                   }}
                   className="w-full h-full object-cover"
                 />
@@ -1069,13 +1079,14 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             <img
-              src={
-                currentUser.profile_image_url ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.username || 'User')}&background=1877F2&color=fff`
-              }
+              src={getUserAvatarUrl(currentUser)}
               alt=""
               onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.username || 'User')}&background=1877F2&color=fff`;
+                const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.username || 'User')}&background=1877F2&color=fff`;
+                const target = e.currentTarget as HTMLImageElement;
+                if (target.src !== fallback) {
+                  target.src = fallback;
+                }
               }}
               className="w-11 h-11 rounded-xl object-cover border border-[#1E293B]"
             />
@@ -1170,7 +1181,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className="flex items-center gap-3 p-2.5 hover:bg-[#162137]/60 border border-transparent hover:border-[#1E293B]/60 rounded-xl cursor-pointer transition-colors mb-2"
         onClick={() => onProfileClick(currentUser.id)}
       >
-        <img src={currentUser.profile_image_url} alt="" className="w-10 h-10 rounded-xl object-cover border border-[#1E293B]" />
+        <img
+          src={getUserAvatarUrl(currentUser)}
+          alt=""
+          className="w-10 h-10 rounded-xl object-cover border border-[#1E293B]"
+        />
         <span className="text-[#F8FAFC] font-semibold text-[21px] truncate" style={{ fontSize: '21px' }}>{currentUser.name}</span>
       </div>
 

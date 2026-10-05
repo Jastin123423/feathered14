@@ -1113,8 +1113,15 @@ export const UserProfile: React.FC<UserProfileProps> = ({
 
   const totalEngagement = totalLikes + totalComments + totalShares;
 
-  const safeProfileImage = safeStringHelper((user as any)?.profile_image_url, '');
-  const safeCoverImage = safeStringHelper((user as any)?.cover_image_url, '');
+  const activeProfileImage = isCurrentUser
+    ? currentUser?.profile_image_url || (user as any)?.profile_image_url || ''
+    : (user as any)?.profile_image_url || '';
+  const safeProfileImage = safeStringHelper(activeProfileImage, '');
+
+  const activeCoverImage = isCurrentUser
+    ? currentUser?.cover_image_url || (user as any)?.cover_image_url || ''
+    : (user as any)?.cover_image_url || '';
+  const safeCoverImage = safeStringHelper(activeCoverImage, '');
   const safeBio = safeStringHelper((user as any)?.bio, '');
 
   // Image validation

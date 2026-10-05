@@ -23,6 +23,7 @@ import {
   getVisitSequence,
   markVideosAsSeen,
 } from './utils/feedVideoRotation';
+import { compressProfileImage, compressCoverImage } from './utils/imageCompression';
 import { AllEvents } from "./components/AllEvents";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ImageViewer, ProfessionalLoader } from './components/Common';
@@ -9385,7 +9386,7 @@ useEffect(() => {
 
   
   const profileUser = useMemo(() => {
-    if (selectedUserId) {
+    if (selectedUserId && (!currentUser || Number(currentUser.id) !== Number(selectedUserId))) {
       const foundInUsers = users.find((u) => Number(u.id) === Number(selectedUserId));
       if (foundInUsers) return foundInUsers;
       const foundInPymk = peopleYouMayKnow.find((u) => Number(u.id) === Number(selectedUserId));
@@ -10133,7 +10134,7 @@ const createPost = useCallback(
     [requireAuth, currentUser]
   );
 
-  // Update profile image
+  // Update profile image with instant optimistic display & automatic compression
   const updateProfileImage = useCallback(
     async (file: File) => {
       if (!requireAuth('Updating profile')) return;
@@ -10144,17 +10145,60 @@ const createPost = useCallback(
         return;
       }
 
+      // 1. INSTANT optimistic preview (0ms delay):
+      // Synchronously generate a local blob URL so that layout header, create story,
+      // home composer, profile header, sidebar, etc. IMMEDIATELY show the newly uploaded avatar.
+      const instantBlobUrl = URL.createObjectURL(file);
+      const instantUser = normalizeUser({ ...currentUser, profile_image_url: instantBlobUrl });
+      setCurrentUser(instantUser);
+      localStorage.setItem(LS_USER_KEY, JSON.stringify(instantUser));
+      setUsers((prev) => safeArray(prev).map((u) => (Number(u.id) === Number(currentUser.id) ? instantUser : u)));
+
+      let compressedBlobUrl = '';
       try {
-        const uploadResult = await uploadToCloudflareR2(file, 'profiles');
-        await updateUserDetails({ profile_image_url: uploadResult.url } as any);
+        // 2. High-fidelity bicubic compression (center-cropped square 720px, high quality, < 150KB)
+        const compressedFile = await compressProfileImage(file);
+        compressedBlobUrl = URL.createObjectURL(compressedFile);
+
+        // Update optimistic preview to the pristine compressed version
+        const compressedUser = normalizeUser({ ...currentUser, profile_image_url: compressedBlobUrl });
+        setCurrentUser(compressedUser);
+        localStorage.setItem(LS_USER_KEY, JSON.stringify(compressedUser));
+        setUsers((prev) => safeArray(prev).map((u) => (Number(u.id) === Number(currentUser.id) ? compressedUser : u)));
+
+        // 3. Upload lightweight compressed file to Cloudflare R2
+        const uploadResult = await uploadToCloudflareR2(compressedFile, 'profiles');
+        const finalUrl = `${uploadResult.url}?t=${Date.now()}`;
+
+        // 4. Preload remote final URL in the background before applying it to state
+        // This ensures the image is already decoded and cached in memory, preventing any flash or fallback to initials
+        try {
+          const preloader = new Image();
+          preloader.src = finalUrl;
+          await new Promise<void>((resolve) => {
+            preloader.onload = () => resolve();
+            preloader.onerror = () => resolve();
+            setTimeout(resolve, 800);
+          });
+        } catch {}
+
+        await updateUserDetails({ profile_image_url: finalUrl } as any);
       } catch (error: any) {
         setLoginError(`Failed to upload profile image: ${error.message}`);
+      } finally {
+        // Keep optimistic blob URLs alive for 60 seconds so image never breaks during transition
+        setTimeout(() => {
+          try { URL.revokeObjectURL(instantBlobUrl); } catch (e) {}
+          if (compressedBlobUrl) {
+            try { URL.revokeObjectURL(compressedBlobUrl); } catch (e) {}
+          }
+        }, 60000);
       }
     },
     [requireAuth, currentUser, updateUserDetails]
   );
 
-  // Update cover image
+  // Update cover image with instant optimistic display & automatic compression
   const updateCoverImage = useCallback(
     async (file: File) => {
       if (!requireAuth('Updating profile')) return;
@@ -10165,11 +10209,46 @@ const createPost = useCallback(
         return;
       }
 
+      // 1. Instant optimistic preview for cover
+      const instantBlobUrl = URL.createObjectURL(file);
+      const instantUser = normalizeUser({ ...currentUser, cover_image_url: instantBlobUrl });
+      setCurrentUser(instantUser);
+      localStorage.setItem(LS_USER_KEY, JSON.stringify(instantUser));
+      setUsers((prev) => safeArray(prev).map((u) => (Number(u.id) === Number(currentUser.id) ? instantUser : u)));
+
+      let compressedBlobUrl = '';
       try {
-        const uploadResult = await uploadToCloudflareR2(file, 'covers');
-        await updateUserDetails({ cover_image_url: uploadResult.url } as any);
+        const compressedFile = await compressCoverImage(file);
+        compressedBlobUrl = URL.createObjectURL(compressedFile);
+
+        const compressedUser = normalizeUser({ ...currentUser, cover_image_url: compressedBlobUrl });
+        setCurrentUser(compressedUser);
+        localStorage.setItem(LS_USER_KEY, JSON.stringify(compressedUser));
+        setUsers((prev) => safeArray(prev).map((u) => (Number(u.id) === Number(currentUser.id) ? compressedUser : u)));
+
+        const uploadResult = await uploadToCloudflareR2(compressedFile, 'covers');
+        const finalUrl = `${uploadResult.url}?t=${Date.now()}`;
+
+        try {
+          const preloader = new Image();
+          preloader.src = finalUrl;
+          await new Promise<void>((resolve) => {
+            preloader.onload = () => resolve();
+            preloader.onerror = () => resolve();
+            setTimeout(resolve, 800);
+          });
+        } catch {}
+
+        await updateUserDetails({ cover_image_url: finalUrl } as any);
       } catch (error: any) {
         setLoginError(`Failed to upload cover image: ${error.message}`);
+      } finally {
+        setTimeout(() => {
+          try { URL.revokeObjectURL(instantBlobUrl); } catch (e) {}
+          if (compressedBlobUrl) {
+            try { URL.revokeObjectURL(compressedBlobUrl); } catch (e) {}
+          }
+        }, 60000);
       }
     },
     [requireAuth, currentUser, updateUserDetails]

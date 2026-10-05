@@ -4877,8 +4877,8 @@ return (
                   </div>
                 )}
                 
-                {/* Large, Professional Typing Area - Dark shade with zero left/right borders and no colored lines */}
-                <div className="px-0 py-4 min-h-[260px] md:min-h-[320px] flex-1 flex flex-col bg-[#050A14] border-y border-[#1E293B]/70 border-x-0">
+                {/* Large, Professional Typing Area - Flat Dark with zero borders and no shade */}
+                <div className="px-0 py-4 min-h-[260px] md:min-h-[320px] flex-1 flex flex-col bg-transparent border-0">
                   <textarea 
                     className="w-full flex-1 bg-transparent outline-none text-[#F8FAFC] placeholder-[#64748B] resize-none text-[19px] leading-relaxed font-normal min-h-[240px] px-4 border-0 focus:ring-0 focus:outline-none" 
                     style={{ fontSize: '19px' }}
