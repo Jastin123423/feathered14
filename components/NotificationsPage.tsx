@@ -762,7 +762,7 @@ export const NotificationsPage: React.FC<Props> = ({
                 )}
                 {previewText && (
                   <div className="min-w-0 select-text">
-                    <span className="text-[#94A3B8] line-clamp-2">“{previewText}”</span>
+                    <span className="text-[#94A3B8] text-[20px] line-clamp-2 leading-relaxed" style={{ fontSize: "20px" }}>“{previewText}”</span>
                   </div>
                 )}
               </div>

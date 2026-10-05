@@ -8591,14 +8591,18 @@ const updateGroupImage = useCallback(
                 ? JSON.parse(uploadData.media_urls)
                 : uploadData.media_urls;
 
-            finalImageUrl = String(media?.feed || "").trim();
+            finalImageUrl = type === "cover"
+              ? String(media?.full || media?.feed || uploadData?.url || "").trim()
+              : String(media?.feed || media?.full || uploadData?.url || "").trim();
           } catch {
-            finalImageUrl = "";
+            finalImageUrl = uploadData?.url || "";
           }
+        } else if (uploadData?.url) {
+          finalImageUrl = String(uploadData.url).trim();
         }
 
         if (!finalImageUrl) {
-          throw new Error("Compressed feed image URL was not returned");
+          throw new Error("Compressed image URL was not returned");
         }
       }
 

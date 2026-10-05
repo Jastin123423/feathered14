@@ -124,7 +124,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
               className="w-12 h-12 rounded-xl object-cover border border-[#1E293B]"
             />
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-[#F8FAFC] text-[21px] truncate">{currentUser.name}</span>
+              <span className="font-bold text-[#F8FAFC] text-[21px] truncate" style={{ fontSize: '21px' }}>{currentUser.name}</span>
               <span className="text-[#1877F2] text-xs font-medium">View your profile →</span>
             </div>
           </div>
@@ -143,7 +143,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
                 <i className={`${item.icon} text-[20px]`} style={{ color: item.color }}></i>
               </div>
               <div>
-                <h4 className="font-semibold text-[#F8FAFC] text-[20px] leading-tight mb-0.5 group-hover:text-[#1877F2] transition-colors">
+                <h4 className="font-semibold text-[#F8FAFC] text-[20px] leading-tight mb-0.5 group-hover:text-[#1877F2] transition-colors" style={{ fontSize: '20px' }}>
                   {item.title}
                 </h4>
               </div>
@@ -162,7 +162,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
             >
               <div className="flex items-center gap-3">
                 <i className={`${item.icon} text-[#94A3B8] text-lg w-6 text-center`}></i>
-                <span className="text-[#F8FAFC] font-medium text-[20px]">{item.title}</span>
+                <span className="text-[#F8FAFC] font-medium text-[20px]" style={{ fontSize: '20px' }}>{item.title}</span>
               </div>
               <i className="fas fa-chevron-right text-[#64748B] text-xs"></i>
             </div>
@@ -174,7 +174,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
           >
             <div className="flex items-center gap-3">
               <i className="fas fa-sign-out-alt text-lg w-6 text-center"></i>
-              <span className="font-medium text-[20px]">Log Out</span>
+              <span className="font-medium text-[20px]" style={{ fontSize: '20px' }}>Log Out</span>
             </div>
           </div>
         </div>
@@ -1080,7 +1080,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-11 h-11 rounded-xl object-cover border border-[#1E293B]"
             />
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-[21px] text-[#F8FAFC] truncate">{currentUser.name}</span>
+              <span className="font-bold text-[21px] text-[#F8FAFC] truncate" style={{ fontSize: '21px' }}>{currentUser.name}</span>
               <span className="text-[#1877F2] text-xs font-medium">View your profile</span>
             </div>
           </div>
@@ -1097,7 +1097,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-8 h-8 rounded-lg bg-[#EF4444]/10 flex items-center justify-center">
               <i className="fas fa-sign-out-alt text-sm"></i>
             </div>
-            <span className="font-medium text-[20px]">Log Out</span>
+            <span className="font-medium text-[20px]" style={{ fontSize: '20px' }}>Log Out</span>
           </div>
         </div>
       )}
@@ -1170,8 +1170,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className="flex items-center gap-3 p-2.5 hover:bg-[#162137]/60 border border-transparent hover:border-[#1E293B]/60 rounded-xl cursor-pointer transition-colors mb-2"
         onClick={() => onProfileClick(currentUser.id)}
       >
-        <img src={currentUser.profile_image_url} alt="" className="w-9 h-9 rounded-xl object-cover border border-[#1E293B]" />
-        <span className="text-[#F8FAFC] font-semibold text-[14px]">{currentUser.name}</span>
+        <img src={currentUser.profile_image_url} alt="" className="w-10 h-10 rounded-xl object-cover border border-[#1E293B]" />
+        <span className="text-[#F8FAFC] font-semibold text-[21px] truncate" style={{ fontSize: '21px' }}>{currentUser.name}</span>
       </div>
 
       {items.map((item) => (
@@ -1180,10 +1180,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="flex items-center gap-3 p-2.5 hover:bg-[#162137]/60 border border-transparent hover:border-[#1E293B]/60 rounded-xl cursor-pointer mb-1 transition-colors"
           onClick={item.onClick}
         >
-          <div className="w-8 h-8 rounded-lg bg-[#162137]/65 border border-[#1E293B]/60 flex items-center justify-center">
-            <i className={`${item.icon} text-[16px]`} style={{ color: item.color }}></i>
+          <div className="w-9 h-9 rounded-lg bg-[#162137]/65 border border-[#1E293B]/60 flex items-center justify-center flex-shrink-0">
+            <i className={`${item.icon} text-[18px]`} style={{ color: item.color }}></i>
           </div>
-          <span className="text-[#F8FAFC] font-medium text-[14px]">{item.label}</span>
+          <span className="text-[#F8FAFC] font-medium text-[20px]" style={{ fontSize: '20px' }}>{item.label}</span>
         </div>
       ))}
 

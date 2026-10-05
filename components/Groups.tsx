@@ -18,6 +18,7 @@ import { CreateEventModal } from './Events';
 import { SavePostButton } from './SavePostButton';
 import { VerifiedBadge } from './VerifiedBadge';
 import { apiFetch } from '../utils/api';
+import { buildCompressedImageFile } from '../utils/imageCompression';
 import { getCachedComments, setCachedComments, updateCachedComment } from '../utils/dataCache';
 import { imageCache, observeForThumbnail, observeForFeed } from '../utils/imageCache';
 
@@ -1919,7 +1920,7 @@ const CreateGroupFullPageModal: React.FC<{
     try {
       await onCreate({
         name: name.trim(),
-        description: desc.trim(),
+        description: (desc || '').trim(),
         type: 'public',
         category: selectedCategory,
         profile_image: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
@@ -1975,11 +1976,11 @@ const CreateGroupFullPageModal: React.FC<{
             </div>
 
             <div>
-              <label className="block text-[#CBD5E1] text-xs font-semibold uppercase tracking-wider mb-2">Description</label>
+              <label className="block text-[#CBD5E1] text-xs font-semibold uppercase tracking-wider mb-2">Description (Optional)</label>
               <textarea
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
-                placeholder="Tell people what this group is about..."
+                placeholder="Tell people what this group is about (optional)..."
                 rows={3}
                 className="w-full bg-transparent border-b border-[#334155] focus:border-[#1877f2] px-0 py-2.5 text-[#F8FAFC] text-sm outline-none transition-colors resize-none placeholder-[#64748B] leading-relaxed"
               />
@@ -2731,10 +2732,25 @@ const handleGroupClick = async (group: Group) => {
       });
   };
 
-const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'profile') => {
-  const file = e.target.files?.[0];
-  if (!file || !activeGroup) return;
+const compressGroupImage = async (file: File, type: 'cover' | 'profile'): Promise<File> => {
+  if (file.type === 'image/gif' || file.type === 'image/svg+xml') {
+    return file;
+  }
+  try {
+    const maxWidth = type === 'cover' ? 1920 : 800;
+    const quality = type === 'cover' ? 0.88 : 0.88;
+    return await buildCompressedImageFile(file, maxWidth, quality, type);
+  } catch (err) {
+    console.warn('Image compression fallback to original file:', err);
+    return file;
+  }
+};
 
+const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'profile') => {
+  const rawFile = e.target.files?.[0];
+  if (!rawFile || !activeGroup) return;
+
+  const file = await compressGroupImage(rawFile, type);
   const previewUrl = URL.createObjectURL(file);
 
   setGroupImageOverrides(prev => ({
@@ -4042,7 +4058,7 @@ return (
             
       {isMember && canPost && canUserPost(currentUser?.id ?? 0) && !uploadState?.isUploading && (
         <div 
-          className="bg-[#0F172A] rounded-2xl p-4 sm:p-5 mb-5 border border-[#1E293B] shadow-md transition-all hover:border-[#334155] mx-0"
+          className="bg-[#070D1A] rounded-2xl p-4 sm:p-5 mb-5 border-y border-[#1E293B]/80 border-x-0 shadow-md transition-all hover:bg-[#0B1325] mx-0"
         >
           <div 
             className="flex gap-3.5 items-center cursor-pointer"
@@ -4056,8 +4072,8 @@ return (
             }}
           >
             <img src={avatarFrom(currentUser)} className="w-12 h-12 rounded-full bg-[#1E293B] object-cover ring-2 ring-[#1E293B] flex-shrink-0" alt="" />
-            <div className="flex-1 bg-[#1E293B]/80 hover:bg-[#1E293B] transition-colors rounded-2xl px-5 py-3.5 flex items-center justify-between border border-[#334155]/40">
-              <span className="text-[#94A3B8] text-base md:text-lg font-normal truncate">
+            <div className="flex-1 bg-[#0F172A] hover:bg-[#141E33] transition-colors rounded-2xl px-5 py-3.5 flex items-center justify-between border-0">
+              <span className="text-[#94A3B8] text-[19px] font-normal truncate">
                 {activeGroup.category === 'buy_sell' && `Sell something in ${activeGroup.name}...`}
                 {activeGroup.category === 'recruitment' && `Post a job opportunity in ${activeGroup.name}...`}
                 {activeGroup.category !== 'buy_sell' && activeGroup.category !== 'recruitment' && `Write something to ${activeGroup.name}...`}
@@ -4768,12 +4784,12 @@ return (
               </div>
               
               <div className="flex-1 flex flex-col overflow-y-auto">
-                <div className="p-5 flex items-center gap-3.5 border-b border-[#1E293B]/40">
-                  <img src={avatarFrom(currentUser)} className="w-12 h-12 rounded-full border-2 border-[#1877f2] object-cover flex-shrink-0" alt="" />
+                <div className="p-5 flex items-center gap-3.5 border-b border-[#1E293B]/40 bg-[#0F172A]">
+                  <img src={avatarFrom(currentUser)} className="w-12 h-12 rounded-full object-cover flex-shrink-0 ring-1 ring-[#1E293B]" alt="" />
                   <div className="min-w-0">
-                    <div className="font-bold text-[#F8FAFC] text-base truncate">{currentUser?.name}</div>
-                    <div className="text-[#1877f2] text-xs font-semibold flex items-center gap-1.5 mt-0.5 truncate">
-                      <i className="fas fa-users text-[10px]"></i>
+                    <div className="font-bold text-[#F8FAFC] text-[21px] leading-tight truncate" style={{ fontSize: '21px' }}>{currentUser?.name}</div>
+                    <div className="text-[#94A3B8] text-[19px] font-normal flex items-center gap-1.5 mt-0.5 truncate" style={{ fontSize: '19px' }}>
+                      <i className="fas fa-users text-sm text-[#64748B]"></i>
                       <span>Posting to {activeGroup.name}</span>
                     </div>
                   </div>
@@ -4828,10 +4844,11 @@ return (
                   </div>
                 )}
                 
-                {/* Large, Professional Typing Area - Full width with 0 left and right gaps */}
-                <div className="px-0 py-4 min-h-[260px] md:min-h-[320px] flex-1 flex flex-col">
+                {/* Large, Professional Typing Area - Dark shade with zero left/right borders and no colored lines */}
+                <div className="px-0 py-4 min-h-[260px] md:min-h-[320px] flex-1 flex flex-col bg-[#050A14] border-y border-[#1E293B]/70 border-x-0">
                   <textarea 
-                    className="w-full flex-1 bg-transparent outline-none text-[#F8FAFC] placeholder-[#64748B] resize-none text-base md:text-lg leading-relaxed font-normal min-h-[240px] px-0 pl-0 pr-0" 
+                    className="w-full flex-1 bg-transparent outline-none text-[#F8FAFC] placeholder-[#64748B] resize-none text-[19px] leading-relaxed font-normal min-h-[240px] px-4 border-0 focus:ring-0 focus:outline-none" 
+                    style={{ fontSize: '19px' }}
                     placeholder={
                       activeGroup.category === 'buy_sell' ? "Describe your item in detail (features, condition, specifications, warranty, why you're selling)..." : 
                       activeGroup.category === 'recruitment' ? "Describe the role, responsibilities, requirements, qualifications, and how to apply..." : 
@@ -5094,69 +5111,6 @@ return (
               <i className="fas fa-check-circle"></i> Group link copied to clipboard successfully!
             </p>
           )}
-        </div>
-
-        {/* Quick External Share Actions */}
-        <div className="pt-2 border-t border-[#1E293B]">
-          <span className="block text-xs font-semibold text-[#94A3B8] mb-3">Or share via</span>
-          <div className="grid grid-cols-4 gap-2">
-            <button
-              onClick={() => {
-                const url = `https://wa.me/?text=${encodeURIComponent(`Join ${activeGroup.name} on UNERA: ${getGroupShareLink(activeGroup)}`)}`;
-                window.open(url, '_blank');
-              }}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#25D366] transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#25D366]/15 text-[#25D366] flex items-center justify-center text-lg">
-                <i className="fab fa-whatsapp"></i>
-              </div>
-              <span className="text-[11px] font-medium">WhatsApp</span>
-            </button>
-            <button
-              onClick={() => {
-                const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join ${activeGroup.name} on UNERA`)}&url=${encodeURIComponent(getGroupShareLink(activeGroup))}`;
-                window.open(url, '_blank');
-              }}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#1DA1F2] transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#1DA1F2]/15 text-[#1DA1F2] flex items-center justify-center text-lg">
-                <i className="fab fa-twitter"></i>
-              </div>
-              <span className="text-[11px] font-medium">Twitter/X</span>
-            </button>
-            <button
-              onClick={() => {
-                const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getGroupShareLink(activeGroup))}`;
-                window.open(url, '_blank');
-              }}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#1877F2] transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#1877F2]/15 text-[#1877F2] flex items-center justify-center text-lg">
-                <i className="fab fa-facebook-f"></i>
-              </div>
-              <span className="text-[11px] font-medium">Facebook</span>
-            </button>
-            <button
-              onClick={async () => {
-                const link = getGroupShareLink(activeGroup);
-                if (navigator.share) {
-                  try {
-                    await navigator.share({ title: activeGroup.name, url: link });
-                  } catch {}
-                } else {
-                  await navigator.clipboard.writeText(link);
-                  setCopiedGroupLink(true);
-                  setTimeout(() => setCopiedGroupLink(false), 3000);
-                }
-              }}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-[#1E293B] text-[#94A3B8] hover:text-white transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#1E293B] text-[#CBD5E1] flex items-center justify-center text-lg">
-                <i className="fas fa-ellipsis-h"></i>
-              </div>
-              <span className="text-[11px] font-medium">More</span>
-            </button>
-          </div>
         </div>
       </div>
     </div>
