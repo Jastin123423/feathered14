@@ -4,6 +4,13 @@ import { User } from '../types';
 import { getApiBaseUrl } from '../utils/api';
 
 /* =========================
+   Constants
+========================= */
+
+const APP_NAME = 'Feathered';
+const APP_LOGO = 'https://media.featheredsocial.site/file_00000000fcd8820ebece7f0c251fccf1.png';
+
+/* =========================
    API Helpers
 ========================= */
 
@@ -43,16 +50,16 @@ async function requestJSON(path: string, options: RequestInit) {
 function saveAuth(auth: { token?: string; user?: any }) {
   if (auth.token) {
     localStorage.setItem('token', auth.token);
-    localStorage.setItem('unera_token', auth.token);
+    localStorage.setItem('feathered_token', auth.token);
   }
   if (auth.user) {
     localStorage.setItem('user', JSON.stringify(auth.user));
-    localStorage.setItem('unera_user', JSON.stringify(auth.user));
+    localStorage.setItem('feathered_user', JSON.stringify(auth.user));
 
     const userId = auth.user.id ?? auth.user.user_id;
     if (userId) {
       localStorage.setItem('user_id', String(userId));
-      localStorage.setItem('unera_user_id', String(userId));
+      localStorage.setItem('feathered_user_id', String(userId));
     }
   }
 }
@@ -80,6 +87,30 @@ async function apiSignup(payload: {
 }
 
 /* =========================
+   Brand Header (reusable)
+========================= */
+
+const BrandHeader: React.FC<{ size?: number; className?: string }> = ({
+  size = 44,
+  className = '',
+}) => (
+  <div className={`flex items-center justify-center gap-2 ${className}`}>
+    <img
+      src={APP_LOGO}
+      alt={APP_NAME}
+      style={{ width: size, height: size }}
+      className="object-contain rounded-full"
+    />
+    <h1
+      className="font-bold bg-gradient-to-r from-[#1877F2] to-[#1D8AF2] text-transparent bg-clip-text tracking-tight"
+      style={{ fontSize: size }}
+    >
+      {APP_NAME}
+    </h1>
+  </div>
+);
+
+/* =========================
    Forgot Password (UI only)
 ========================= */
 
@@ -103,12 +134,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBackToLogin })
       <div className="w-full max-w-[400px] flex flex-col gap-6">
         {/* Brand */}
         <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <i className="fas fa-globe-americas text-[#1877F2] text-[40px]"></i>
-            <h1 className="text-[40px] font-bold bg-gradient-to-r from-[#1877F2] to-[#1D8AF2] text-transparent bg-clip-text">
-              UNERA
-            </h1>
-          </div>
+          <BrandHeader size={40} className="mb-2" />
           <h2 className="text-[24px] font-bold text-[#F8FAFC] mt-4">Find Your Account</h2>
           <p className="text-[#94A3B8] text-[15px] mt-1">
             Enter your email to search for your account.
@@ -194,7 +220,7 @@ export const Login: React.FC<LoginProps> = ({
       const res = await apiLogin(email.trim(), password);
       saveAuth(res);
       try {
-        (window as any).uneraRegisterPushToken?.();
+        (window as any).featheredRegisterPushToken?.();
       } catch {}
       onLoggedIn?.(res.user);
       setTimeout(() => {
@@ -222,12 +248,7 @@ export const Login: React.FC<LoginProps> = ({
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <i className="fas fa-globe-americas text-[#1877F2] text-[44px]"></i>
-            <h1 className="text-[44px] font-bold bg-gradient-to-r from-[#1877F2] to-[#1D8AF2] text-transparent bg-clip-text tracking-tight">
-              UNERA
-            </h1>
-          </div>
+          <BrandHeader size={44} className="mb-3" />
           <p className="text-[#94A3B8] text-[17px] max-w-[400px]">
             {t('tagline')}
           </p>
@@ -437,7 +458,7 @@ export const Register: React.FC<RegisterProps> = ({ onBackToLogin, onRegistered 
 
       saveAuth(res);
       try {
-        (window as any).uneraRegisterPushToken?.();
+        (window as any).featheredRegisterPushToken?.();
       } catch {}
       onRegistered?.(res.user);
       setTimeout(() => {
@@ -459,12 +480,7 @@ export const Register: React.FC<RegisterProps> = ({ onBackToLogin, onRegistered 
       <div className="w-full max-w-[400px] flex flex-col gap-6">
         {/* Brand */}
         <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <i className="fas fa-globe-americas text-[#1877F2] text-[44px]"></i>
-            <h1 className="text-[44px] font-bold bg-gradient-to-r from-[#1877F2] to-[#1D8AF2] text-transparent bg-clip-text">
-              UNERA
-            </h1>
-          </div>
+          <BrandHeader size={44} className="mb-2" />
           <h2 className="text-[22px] font-bold text-[#F8FAFC] mt-4">{t('sign_up_header')}</h2>
           <p className="text-[#94A3B8] text-[15px] mt-1">{t('quick_easy')}</p>
         </div>
