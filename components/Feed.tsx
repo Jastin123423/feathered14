@@ -9191,11 +9191,11 @@ export const CreatePost: React.FC<{
       />
 
       <div
-        className="flex-1 bg-transparent hover:bg-transparent border-0 px-1 py-2 cursor-pointer flex items-center transition-all group"
+        className="flex-1 bg-[#1E293B]/70 hover:bg-[#1E293B] rounded-2xl px-4 py-2.5 cursor-pointer flex items-center transition-all group shadow-sm"
         onClick={onClick}
       >
-        <span className="text-[#94A3B8] group-hover:text-[#F8FAFC] text-[20px] font-medium tracking-tight truncate transition-colors select-none">
-          What's On Your Mind?
+        <span className="text-[#94A3B8] group-hover:text-[#F8FAFC] text-[19px] font-normal tracking-tight truncate transition-colors select-none">
+          What's on your mind?
         </span>
       </div>
 
@@ -9949,7 +9949,7 @@ export const CreatePostModal = memo(
               className={`relative mb-4 transition-all duration-300 ${
                 activeBackground
                   ? 'w-full min-h-[320px] md:min-h-[380px] rounded-2xl flex items-center justify-center p-6 sm:p-10 shadow-inner overflow-hidden border-0'
-                  : 'min-h-[160px]'
+                  : 'w-full bg-transparent border-0 px-0 py-1'
               }`}
               style={
                 activeBackground
@@ -9976,19 +9976,21 @@ export const CreatePostModal = memo(
                 className={`w-full bg-transparent outline-none resize-none border-0 focus:ring-0 ${
                   activeBackground
                     ? 'text-center font-black text-2xl sm:text-3xl md:text-4xl text-white drop-shadow-md placeholder-white/70 leading-relaxed tracking-tight py-4'
-                    : 'text-[#F8FAFC] placeholder-[#94A3B8] text-[24px] sm:text-[26px] leading-relaxed'
+                    : 'text-[#F8FAFC] placeholder-[#94A3B8] font-normal leading-relaxed min-h-[180px] md:min-h-[240px] px-0 py-1'
                 }`}
                 style={
                   activeBackground
                     ? {
                         textShadow: '0 2px 10px rgba(0,0,0,0.5)',
                       }
-                    : undefined
+                    : {
+                        fontSize: '28px',
+                      }
                 }
                 placeholder="What's on your mind?"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                rows={activeBackground ? 4 : 5}
+                rows={activeBackground ? 4 : 6}
                 autoFocus
               />
             </div>
