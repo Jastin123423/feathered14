@@ -300,6 +300,9 @@ export interface Post {
   audio_track?: AudioTrack;
 
   background?: string;
+  colours?: string;
+  color?: string;
+  background_style?: string;
 
   shared_post_id?: number;
   shared_post?: Post | any;

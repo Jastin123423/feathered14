@@ -362,12 +362,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       return json({ error: "media_url must be a valid http/https URL" }, 400);
     }
 
-    const background =
-      typeof body.background === "string" && body.background.trim()
-        ? body.background.trim()
-        : null;
-    if (background) {
-      media_meta_arr.push({ type: "background", background });
+    const colours =
+      (typeof body.colours === "string" && body.colours.trim()) ||
+      (typeof body.background === "string" && body.background.trim()) ||
+      (typeof body.background_style === "string" && body.background_style.trim()) ||
+      (typeof body.color === "string" && body.color.trim()) ||
+      null;
+
+    if (colours) {
+      media_meta_arr.push({ type: "background", background: colours, colours });
+      // If it's a coloured text post without actual uploaded files, ensure media_url is null
+      if (final_multi_urls.length === 0 && !hasSingle) {
+        // purely text post with background
+      }
     }
 
     const media_urls_json = final_multi_urls.length
@@ -380,6 +387,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       ? JSON.stringify(media_meta_arr)
       : null;
 
+    // Ensure colours column exists in posts table
+    try {
+      await env.DB.prepare(`ALTER TABLE posts ADD COLUMN colours TEXT`).run();
+    } catch (_) {}
+
     // ---- Allocate a hard, globally-unique content ID and insert ----
     let insertedWithMediaMeta = true;
     let post_id: number;
@@ -389,8 +401,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         return await env.DB.prepare(
           `INSERT INTO posts
              (id, user_id, content, media_url, media_type,
-              media_urls, media_types, media_meta)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+              media_urls, media_types, media_meta, colours)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
           .bind(
             id,
@@ -400,38 +412,59 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
             final_media_type,
             media_urls_json,
             media_types_json,
-            media_meta_json
+            media_meta_json,
+            colours || null
           )
           .run();
       });
       post_id = id;
     } catch (e: any) {
-      // Fallback: older schema without media_meta
-      const msg = String(e?.message || "");
-      const looksLikeMissingColumn =
-        msg.includes("no such column") || msg.includes("media_meta");
-      if (!looksLikeMissingColumn) throw e;
-
-      insertedWithMediaMeta = false;
-      const { id } = await withNewContentId(async (id) => {
-        return await env.DB.prepare(
-          `INSERT INTO posts
-             (id, user_id, content, media_url, media_type,
-              media_urls, media_types)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
-        )
-          .bind(
-            id,
-            user_id,
-            content || null,
-            final_media_url,
-            final_media_type,
-            media_urls_json,
-            media_types_json
+      // Fallback 1: schema with colours but without media_meta
+      try {
+        const { id } = await withNewContentId(async (id) => {
+          return await env.DB.prepare(
+            `INSERT INTO posts
+               (id, user_id, content, media_url, media_type,
+                media_urls, media_types, colours)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
           )
-          .run();
-      });
-      post_id = id;
+            .bind(
+              id,
+              user_id,
+              content || null,
+              final_media_url,
+              final_media_type,
+              media_urls_json,
+              media_types_json,
+              colours || null
+            )
+            .run();
+        });
+        post_id = id;
+        insertedWithMediaMeta = false;
+      } catch (e2: any) {
+        // Fallback 2: older schema without colours or media_meta
+        insertedWithMediaMeta = false;
+        const { id } = await withNewContentId(async (id) => {
+          return await env.DB.prepare(
+            `INSERT INTO posts
+               (id, user_id, content, media_url, media_type,
+                media_urls, media_types)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`
+          )
+            .bind(
+              id,
+              user_id,
+              content || null,
+              final_media_url,
+              final_media_type,
+              media_urls_json,
+              media_types_json
+            )
+            .run();
+        });
+        post_id = id;
+      }
     }
 
     const media = insertedWithMediaMeta
@@ -457,8 +490,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           id: post_id,
           user_id,
           content: content || "",
-          background: background || null,
-          background_style: background || null,
+          colours: colours || null,
+          background: colours || null,
+          background_style: colours || null,
           media_url: final_media_url,
           media_type: final_media_type,
           media_urls: media_urls_json,
@@ -500,13 +534,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     const normalized = rawList.map((item: any) => {
       const media = normalizePostMedia(item);
       const rawMeta = normalizeMediaMetaArray(item?.media_meta);
-      const bgItem = rawMeta.find((m: any) => m?.type === "background" || m?.background);
-      const background = item.background || bgItem?.background || null;
+      const bgItem = rawMeta.find((m: any) => m?.type === "background" || m?.background || m?.colours);
+      const colours = item.colours || item.background || bgItem?.colours || bgItem?.background || null;
 
       return {
         ...item,
-        background,
-        background_style: background,
+        colours,
+        background: colours,
+        background_style: colours,
         media,
         media_count: media.length,
         thumb_url: media[0]?.thumb || (media[0]?.type === "image" ? item.media_url : null),

@@ -298,6 +298,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const freshCount = Math.max(5, Math.floor(limit * 0.65));
     const exploreCount = Math.max(0, limit - freshCount);
 
+    // Ensure colours column exists in posts table
+    try {
+      await env.DB.prepare(`ALTER TABLE posts ADD COLUMN colours TEXT`).run();
+    } catch (_) {}
+
     // ============================================================
     // 1) POSTS
     // ============================================================
@@ -377,6 +382,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         p.visibility AS visibility,
         p.views AS views,
         p.shares AS shares,
+        p.colours AS colours,
+        p.colours AS background,
+        p.colours AS background_style,
 
         CASE
           WHEN p.media_url LIKE 'data:%' THEN NULL
@@ -564,6 +572,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         p.visibility AS visibility,
         p.views AS views,
         p.shares AS shares,
+        p.colours AS colours,
+        p.colours AS background,
+        p.colours AS background_style,
 
         CASE
           WHEN p.media_url LIKE 'data:%' THEN NULL
@@ -2177,6 +2188,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         COALESCE(p.visibility, 'Public') AS visibility,
         COALESCE(p.views, 0) AS views,
         COALESCE(p.shares, 0) AS shares,
+        p.colours AS colours,
+        p.colours AS background,
+        p.colours AS background_style,
 
         CASE
           WHEN COALESCE(a.media_url, p.media_url) LIKE 'data:%' THEN NULL
@@ -2631,6 +2645,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       const normalized: any = {
         ...item,
         ...normalizeMedia(item),
+        colours: item?.colours || item?.background || null,
+        background: item?.colours || item?.background || null,
+        background_style: item?.colours || item?.background || null,
         description: item?.description ?? item?.content ?? "",
         is_verified: isVerified,
         verified: isVerified,
@@ -2735,6 +2752,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           const normalizedShared = {
             ...sp,
             ...normalizeMedia(sp),
+            colours: sp?.colours || sp?.background || null,
+            background: sp?.colours || sp?.background || null,
+            background_style: sp?.colours || sp?.background || null,
             id: Number(sp.id || sp.product_id || 0),
             ...(isProductLike ? { product_id: Number(sp.product_id || sp.id || 0) } : {}),
             title: sp.title || sp.name || "",

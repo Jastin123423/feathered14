@@ -282,6 +282,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     const perType = clamp(Math.ceil((limit + 1) * 1.5), 10, 80);
 
+    // Ensure colours column exists in posts table
+    try {
+      await env.DB.prepare(`ALTER TABLE posts ADD COLUMN colours TEXT`).run();
+    } catch (_) {}
+
     // ---------------- POSTS ----------------
     const qPosts = `
       SELECT
@@ -326,6 +331,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         p.visibility AS visibility,
         p.views AS views,
         p.shares AS shares,
+        p.colours AS colours,
+        p.colours AS background,
+        p.colours AS background_style,
 
         CASE
           WHEN p.media_url LIKE 'data:%' THEN NULL
@@ -509,6 +517,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         p.visibility AS visibility,
         p.views AS views,
         p.shares AS shares,
+        p.colours AS colours,
+        p.colours AS background,
+        p.colours AS background_style,
 
         NULL AS media_url,
         NULL AS media_type,
@@ -1559,6 +1570,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       return {
         ...item,
         ...normalizeMedia(item),
+        colours: item?.colours || item?.background || null,
+        background: item?.colours || item?.background || null,
+        background_style: item?.colours || item?.background || null,
         description: item?.description ?? item?.content ?? "",
         is_verified: isVerified,
         verified: isVerified,
