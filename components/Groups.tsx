@@ -1182,6 +1182,11 @@ const RecruitmentPost: React.FC<any> = (props) => {
   const fullAddress = location || [street, district, region, country].filter(Boolean).join(', ');
   const applicationType = (post as any).application_type || null;
   const applicationValue = (post as any).application_value || '';
+  const hasApplicationMethod = Boolean(
+    applicationValue &&
+    String(applicationValue).trim().length > 0 &&
+    (applicationType === 'email' || applicationType === 'link' || String(applicationValue).includes('@') || String(applicationValue).startsWith('http'))
+  );
   const expiryDate = (post as any).expiry_date ? new Date((post as any).expiry_date) : null;
   const now = new Date();
   const isExpired = expiryDate ? expiryDate < now : false;
@@ -1276,33 +1281,35 @@ const RecruitmentPost: React.FC<any> = (props) => {
               {salary && (<div className="flex items-center gap-2 text-[#94A3B8] col-span-2"><i className="fas fa-dollar-sign text-sm w-5 text-[#45BD62]"></i><span className="text-sm font-medium text-[#45BD62]">{salary}</span></div>)}
             </div>
 
-            {/* Apply Button on top after Job Type and Salary before description */}
-            <div className="mb-4">
-              {!isExpired ? (
-                <button
-                  onClick={handleApply}
-                  disabled={applied}
-                  className="w-full bg-[#1B74E4] text-white py-3 rounded-xl font-bold text-lg hover:bg-[#1A6ED8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
-                >
-                  {applied ? (
-                    <>
-                      <i className="fas fa-check"></i>
-                      <span>Applied</span>
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-paper-plane text-base"></i>
-                      <span>Apply Now</span>
-                    </>
-                  )}
-                </button>
-              ) : (
-                <div className="w-full bg-[#F3425F]/10 text-[#F3425F] py-3 rounded-xl font-bold text-center border border-[#F3425F]/20 flex items-center justify-center gap-2">
-                  <i className="fas fa-clock"></i>
-                  <span>This job posting has expired</span>
-                </div>
-              )}
-            </div>
+            {/* Apply Button on top after Job Type and Salary before description - only shown if email or link attached */}
+            {hasApplicationMethod && (
+              <div className="mb-4">
+                {!isExpired ? (
+                  <button
+                    onClick={handleApply}
+                    disabled={applied}
+                    className="w-full bg-[#1B74E4] text-white py-3 rounded-xl font-bold text-lg hover:bg-[#1A6ED8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                  >
+                    {applied ? (
+                      <>
+                        <i className="fas fa-check"></i>
+                        <span>Applied</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-paper-plane text-base"></i>
+                        <span>Apply Now</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div className="w-full bg-[#F3425F]/10 text-[#F3425F] py-3 rounded-xl font-bold text-center border border-[#F3425F]/20 flex items-center justify-center gap-2">
+                    <i className="fas fa-clock"></i>
+                    <span>This job posting has expired</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {post.content && (
               <div className="mb-4">
@@ -4873,6 +4880,87 @@ return (
                         className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B]" 
                         placeholder="e.g. San Francisco, CA / Remote" 
                       />
+                    </div>
+
+                    {/* Application Method: Email or External Link */}
+                    <div className="pt-2 border-t border-[#334155]/60">
+                      <label className="block text-[#94A3B8] text-xs font-semibold mb-1.5">
+                        How can candidates apply? <span className="text-[#64748B] font-normal">(Optional — if left empty, Apply button is hidden)</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 mb-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setPostMetadata({ ...postMetadata, application_type: 'email' })}
+                          className={`py-2 px-3 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                            postMetadata.application_type === 'email'
+                              ? 'bg-[#1877F2]/15 border-[#1877F2] text-[#1877F2]'
+                              : 'bg-[#1E293B] border-[#334155] text-[#94A3B8] hover:text-[#F8FAFC]'
+                          }`}
+                        >
+                          <i className="fas fa-envelope text-xs"></i>
+                          <span>By Email</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPostMetadata({ ...postMetadata, application_type: 'link' })}
+                          className={`py-2 px-3 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                            postMetadata.application_type === 'link'
+                              ? 'bg-[#1877F2]/15 border-[#1877F2] text-[#1877F2]'
+                              : 'bg-[#1E293B] border-[#334155] text-[#94A3B8] hover:text-[#F8FAFC]'
+                          }`}
+                        >
+                          <i className="fas fa-external-link-alt text-xs"></i>
+                          <span>By External Link</span>
+                        </button>
+                      </div>
+
+                      {postMetadata.application_type === 'email' && (
+                        <div className="animate-fade-in">
+                          <label className="block text-[#94A3B8] text-[11px] font-medium mb-1">
+                            Application Email Address
+                          </label>
+                          <div className="relative">
+                            <i className="fas fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] text-xs"></i>
+                            <input
+                              type="email"
+                              value={postMetadata.application_value || ''}
+                              onChange={(e) => setPostMetadata({ ...postMetadata, application_value: e.target.value })}
+                              className="w-full bg-[#1E293B] border border-[#334155] rounded-xl pl-8 pr-3 py-2 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B] focus:border-[#1877F2]"
+                              placeholder="e.g. jobs@company.com"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {postMetadata.application_type === 'link' && (
+                        <div className="animate-fade-in">
+                          <label className="block text-[#94A3B8] text-[11px] font-medium mb-1">
+                            Application Website / Careers URL
+                          </label>
+                          <div className="relative">
+                            <i className="fas fa-link absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] text-xs"></i>
+                            <input
+                              type="url"
+                              value={postMetadata.application_value || ''}
+                              onChange={(e) => setPostMetadata({ ...postMetadata, application_value: e.target.value })}
+                              className="w-full bg-[#1E293B] border border-[#334155] rounded-xl pl-8 pr-3 py-2 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B] focus:border-[#1877F2]"
+                              placeholder="e.g. https://company.com/careers/apply"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {postMetadata.application_type && (
+                        <div className="flex justify-end mt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPostMetadata({ ...postMetadata, application_type: undefined, application_value: '' })}
+                            className="text-[#94A3B8] hover:text-[#CBD5E1] text-[11px] underline cursor-pointer"
+                          >
+                            Remove application method (hide Apply button)
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

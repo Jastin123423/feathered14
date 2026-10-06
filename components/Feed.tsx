@@ -3972,7 +3972,8 @@ const normalizeEventFromFeed = (item: any) => {
 
 // ==================== MEDIA HELPERS ====================
 const getMediaTypeInfo = (post: any) => {
-  const mediaUrl = String(post?.media_url || '');
+  const rawUrl = String(post?.media_url || '').trim();
+  const mediaUrl = rawUrl === 'null' || rawUrl === 'undefined' ? '' : rawUrl;
   const mediaTypeRaw = String(post?.media_type || '').toLowerCase();
   const typeRaw = String(post?.type || '').toLowerCase();
 
@@ -6977,6 +6978,11 @@ export const Post = memo(
     const expiryDateVal = p?.expiry_date || meta?.expiry_date || null;
     const expiryDate = expiryDateVal ? new Date(expiryDateVal) : null;
     const isJobExpired = expiryDate ? expiryDate < new Date() : false;
+    const hasJobApplicationMethod = Boolean(
+      applicationValue &&
+      applicationValue.trim().length > 0 &&
+      (applicationType === 'email' || applicationType === 'link' || applicationValue.includes('@') || applicationValue.startsWith('http'))
+    );
 
     // Display specialized job card if post has jobTitle and is from a career group or has company/location/apply details
     const isJobPost = Boolean(
@@ -7940,34 +7946,36 @@ export const Post = memo(
                     )}
                   </div>
 
-                  {/* Apply Button on top after Job Type and Salary before description */}
-                  <div className="mb-3">
-                    {!isJobExpired ? (
-                      <button
-                        type="button"
-                        onClick={handleJobApply}
-                        disabled={appliedJob}
-                        className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white py-3 rounded-xl font-bold text-[16px] sm:text-[17px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
-                      >
-                        {appliedJob ? (
-                          <>
-                            <i className="fas fa-check text-base"></i>
-                            <span>Applied</span>
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-paper-plane text-base"></i>
-                            <span>Apply Now</span>
-                          </>
-                        )}
-                      </button>
-                    ) : (
-                      <div className="w-full bg-[#F3425F]/10 text-[#F3425F] py-2.5 rounded-xl font-bold text-center border border-[#F3425F]/20 flex items-center justify-center gap-2 text-[15px]">
-                        <i className="fas fa-clock"></i>
-                        <span>This job posting has expired</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Apply Button on top after Job Type and Salary before description - only shown if email or link attached */}
+                  {hasJobApplicationMethod && (
+                    <div className="mb-3">
+                      {!isJobExpired ? (
+                        <button
+                          type="button"
+                          onClick={handleJobApply}
+                          disabled={appliedJob}
+                          className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white py-3 rounded-xl font-bold text-[16px] sm:text-[17px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                        >
+                          {appliedJob ? (
+                            <>
+                              <i className="fas fa-check text-base"></i>
+                              <span>Applied</span>
+                            </>
+                          ) : (
+                            <>
+                              <i className="fas fa-paper-plane text-base"></i>
+                              <span>Apply Now</span>
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="w-full bg-[#F3425F]/10 text-[#F3425F] py-2.5 rounded-xl font-bold text-center border border-[#F3425F]/20 flex items-center justify-center gap-2 text-[15px]">
+                          <i className="fas fa-clock"></i>
+                          <span>This job posting has expired</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {p.content && (
                     <div className="mt-3 pt-3 border-t border-[#334155]/50">
@@ -8002,12 +8010,14 @@ export const Post = memo(
               }
 
               // ✅ FULL-BLEED COLORED TEXT POST: Render text directly on the chosen color with zero container barrier
-              if (p.background && !mediaInfo.mediaUrl && !isMarketplace && !isSharedPost) {
+              const bgToUse = p.colours || p.background || p.background_style;
+              const hasNoMedia = !mediaInfo.mediaUrl || mediaInfo.mediaUrl === 'null' || mediaInfo.mediaUrl === 'undefined';
+              if (bgToUse && hasNoMedia && !isMarketplace && !isJobPost && !isSharedPost) {
                 return (
                   <div
                     className="w-full min-h-[320px] md:min-h-[380px] flex items-center justify-center p-8 sm:p-12 text-center text-white font-black text-2xl sm:text-3xl md:text-4xl shadow-inner select-text my-1 leading-relaxed tracking-tight"
                     style={{
-                      background: p.background,
+                      background: bgToUse,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       textShadow: '0 2px 10px rgba(0,0,0,0.5)',
@@ -8138,6 +8148,25 @@ export const Post = memo(
                       }
 
                       if (!candidateText) return null;
+
+                      const sharedBg = originalPost.colours || originalPost.background || originalPost.background_style;
+                      if (sharedBg && (!origMediaInfo || !origMediaInfo.urls || origMediaInfo.urls.length === 0)) {
+                        return (
+                          <div
+                            className="w-full min-h-[220px] flex items-center justify-center p-6 text-center text-white font-extrabold text-xl shadow-inner select-text my-1 leading-relaxed"
+                            style={{
+                              background: sharedBg,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                            }}
+                          >
+                            <div className="max-w-[90%] break-words whitespace-pre-wrap">
+                              {candidateText}
+                            </div>
+                          </div>
+                        );
+                      }
 
                       return (
                         <div className="p-3 md:px-3.5 text-[#F8FAFC]">
@@ -9296,6 +9325,8 @@ export const CreatePostModal = memo(
         feeling?: string;
         taggedUsers?: number[];
         background?: string;
+        colours?: string;
+        background_style?: string;
         linkPreview?: LinkPreview | null;
         // ✅ Native Flutter upload fields
         nativeMediaMeta?: any[];
@@ -9667,6 +9698,8 @@ export const CreatePostModal = memo(
         feeling: feeling || undefined,
         taggedUsers: taggedUsers.length ? taggedUsers : undefined,
         background: activeBackground || undefined,
+        colours: activeBackground || undefined,
+        background_style: activeBackground || undefined,
         linkPreview: linkPreview || null,
         // ✅ Pass native uploaded URLs to App.tsx
         nativeMediaMeta: hasNativeMedia ? mediaMeta : undefined,

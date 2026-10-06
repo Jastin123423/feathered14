@@ -827,30 +827,36 @@ export const UserProfile: React.FC<UserProfileProps> = ({
         postsArray = data.results;
       }
       
-      const normalized = postsArray.map((post: any) => ({
-        ...post,
-        id: safeNumberHelper(post?.id ?? post?.post_id),
-        user_id: safeNumberHelper(post?.user_id),
-        content: safeStringHelper(post?.content),
-        media_url: post?.media_url ?? null,
-        media_type: post?.media_type ?? null,
-        media_urls: Array.isArray(post?.media_urls) ? post.media_urls : [],
-        images: Array.isArray(post?.images) ? post.images : [],
-        reactions: safeArrayHelper(post?.reactions),
-        comments: safeArrayHelper(post?.comments),
-        shares: safeNumberHelper(post?.shares),
-        views: safeNumberHelper(post?.views),
-        my_reaction: post?.my_reaction ?? null,
-        reactions_count: safeNumberHelper(post?.reactions_count, 0),
-        comments_count: safeNumberHelper(post?.comments_count, 0),
-        created_at: post?.created_at ?? new Date().toISOString(),
-        type: post?.type || post?.post_type || 'post',
-        meta: post?.meta || {},
-        product_id: post?.product_id,
-        marketplace: post?.marketplace,
-        event_id: post?.event_id,
-        event: post?.event
-      }));
+      const normalized = postsArray.map((post: any) => {
+        const postColours = post?.colours || post?.background || post?.background_style || null;
+        return {
+          ...post,
+          id: safeNumberHelper(post?.id ?? post?.post_id),
+          user_id: safeNumberHelper(post?.user_id),
+          content: safeStringHelper(post?.content),
+          colours: postColours,
+          background: postColours,
+          background_style: postColours || '',
+          media_url: postColours && (!post?.media_urls?.length && !post?.images?.length) ? null : (post?.media_url ?? null),
+          media_type: post?.media_type ?? null,
+          media_urls: Array.isArray(post?.media_urls) ? post.media_urls : [],
+          images: Array.isArray(post?.images) ? post.images : [],
+          reactions: safeArrayHelper(post?.reactions),
+          comments: safeArrayHelper(post?.comments),
+          shares: safeNumberHelper(post?.shares),
+          views: safeNumberHelper(post?.views),
+          my_reaction: post?.my_reaction ?? null,
+          reactions_count: safeNumberHelper(post?.reactions_count, 0),
+          comments_count: safeNumberHelper(post?.comments_count, 0),
+          created_at: post?.created_at ?? new Date().toISOString(),
+          type: post?.type || post?.post_type || 'post',
+          meta: post?.meta || {},
+          product_id: post?.product_id,
+          marketplace: post?.marketplace,
+          event_id: post?.event_id,
+          event: post?.event
+        };
+      });
 
       normalized.sort((a: any, b: any) => 
         String(b.created_at).localeCompare(String(a.created_at))

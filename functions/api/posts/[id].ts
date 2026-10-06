@@ -130,11 +130,22 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
         .first<any>();
     }
 
+    const postColours = (typeof post.colours === 'string' && post.colours.trim()) || (typeof post.background === 'string' && post.background.trim()) || (typeof post.background_style === 'string' && post.background_style.trim()) || null;
+    const sharedColours = sharedPost ? ((typeof sharedPost.colours === 'string' && sharedPost.colours.trim()) || (typeof sharedPost.background === 'string' && sharedPost.background.trim()) || (typeof sharedPost.background_style === 'string' && sharedPost.background_style.trim()) || null) : null;
+
     return json({
       success: true,
       post: {
         ...post,
-        shared_post: sharedPost,
+        colours: postColours,
+        background: postColours,
+        background_style: postColours,
+        shared_post: sharedPost ? {
+          ...sharedPost,
+          colours: sharedColours,
+          background: sharedColours,
+          background_style: sharedColours,
+        } : null,
       },
     });
   } catch (err: any) {
@@ -377,6 +388,13 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       bindings.push(body.brand_id === null ? null : toNum(body.brand_id, 0));
     }
 
+    // Colours / Background
+    if (body.colours !== undefined || body.background !== undefined || body.background_style !== undefined) {
+      const col = toStr(body.colours ?? body.background ?? body.background_style, "").trim();
+      updates.push("colours = ?");
+      bindings.push(col || null);
+    }
+
     if (!updates.length) {
       return json({ success: false, error: "Nothing to update" }, 400);
     }
@@ -392,7 +410,7 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       .prepare(
         `SELECT
            id, user_id, content, media_url, media_type, media_urls, media_types,
-           media_meta, visibility, brand_id, is_boosted, views, shares,
+           media_meta, colours, visibility, brand_id, is_boosted, views, shares,
            created_at, updated_at
          FROM posts
          WHERE id = ?

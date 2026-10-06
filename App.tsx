@@ -1106,20 +1106,32 @@ const normalizePost = (p: any): PostType => {
     } as any;
   }
 
-  return {
-    ...p,
-    id: resolvedId,
-    user_id: p?.user_id === null || p?.user_id === undefined ? null : safeNumber(p?.user_id),
-    content: safeString(p?.content || p?.text_content || p?.description),
-    text_content: p?.text_content || p?.content || '',
-    background: p?.background || p?.background_style || p?.meta?.background || (rawMediaMeta.find((m: any) => m?.type === 'background' || m?.background)?.background) || null,
-    background_style: p?.background_style || p?.background || '',
-    author_name: p?.author_name || p?.author_full_name || p?.author?.name || p?.user?.name || '',
-    author_username: p?.author_username || p?.author?.username || p?.user?.username || '',
-    author_image: p?.author_image || p?.author?.profile_image_url || p?.user?.profile_image_url || '',
+    const resolvedBackground =
+      (typeof p?.colours === 'string' && p.colours.trim()) ||
+      (typeof p?.background === 'string' && p.background.trim()) ||
+      (typeof p?.background_style === 'string' && p.background_style.trim()) ||
+      (typeof p?.color === 'string' && p.color.trim()) ||
+      (typeof p?.meta?.background === 'string' && p.meta.background.trim()) ||
+      (typeof p?.meta?.colours === 'string' && p.meta.colours.trim()) ||
+      (rawMediaMeta.find((m: any) => m?.type === 'background' || m?.background || m?.colours)?.colours) ||
+      (rawMediaMeta.find((m: any) => m?.type === 'background' || m?.background || m?.colours)?.background) ||
+      null;
 
-    media_url: mediaUrl,
-    video_url: videoUrl || (isVideo ? mediaUrl : null),
+    return {
+      ...p,
+      id: resolvedId,
+      user_id: p?.user_id === null || p?.user_id === undefined ? null : safeNumber(p?.user_id),
+      content: safeString(p?.content || p?.text_content || p?.description),
+      text_content: p?.text_content || p?.content || '',
+      background: resolvedBackground,
+      colours: resolvedBackground,
+      background_style: resolvedBackground || '',
+      author_name: p?.author_name || p?.author_full_name || p?.author?.name || p?.user?.name || '',
+      author_username: p?.author_username || p?.author?.username || p?.user?.username || '',
+      author_image: p?.author_image || p?.author?.profile_image_url || p?.user?.profile_image_url || '',
+
+      media_url: resolvedBackground && mediaUrls.length === 0 && !videoUrl ? null : mediaUrl,
+      video_url: videoUrl || (isVideo ? mediaUrl : null),
     thumbnail_url: p?.thumbnail_url || p?.thumbnail || p?.thumb_url || (rawMediaMeta[0]?.thumb && rawMediaMeta[0]?.thumb !== (videoUrl || mediaUrl) ? rawMediaMeta[0]?.thumb : null) || (mediaUrls.length === 2 && mediaUrls[1] !== (videoUrl || mediaUrl) ? mediaUrls[1] : null) || null,
     thumbnail: p?.thumbnail || p?.thumbnail_url || p?.thumb_url || (rawMediaMeta[0]?.thumb && rawMediaMeta[0]?.thumb !== (videoUrl || mediaUrl) ? rawMediaMeta[0]?.thumb : null) || (mediaUrls.length === 2 && mediaUrls[1] !== (videoUrl || mediaUrl) ? mediaUrls[1] : null) || null,
     media_type: mediaType,
@@ -10037,7 +10049,9 @@ const createPost = useCallback(
       location: meta?.location,
       feeling: meta?.feeling,
       tagged_users: meta?.taggedUsers,
-      background: meta?.background,
+      background: meta?.background || metaAny?.colours || undefined,
+      colours: meta?.background || metaAny?.colours || undefined,
+      background_style: meta?.background || metaAny?.colours || undefined,
       link_preview: meta?.linkPreview,
       feed_key: `post:${Date.now()}`,
       type: isVideoPost ? 'video' : (() => {
@@ -10057,6 +10071,9 @@ const createPost = useCallback(
 
     const newPostRaw = data?.post ?? {
       ...payload,
+      colours: meta?.background || metaAny?.colours || undefined,
+      background: meta?.background || metaAny?.colours || undefined,
+      background_style: meta?.background || metaAny?.colours || undefined,
       post_id: data?.post_id ?? data?.id ?? Date.now(),
       created_at: new Date().toISOString(),
     };

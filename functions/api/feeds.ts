@@ -2642,12 +2642,45 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         role: item?.role || item?.author?.role || "user",
       };
 
+      const bgFromMeta = (() => {
+        try {
+          const arr = Array.isArray(item?.media_meta)
+            ? item.media_meta
+            : typeof item?.media_meta === "string"
+            ? JSON.parse(item.media_meta)
+            : [];
+          if (Array.isArray(arr)) {
+            const found = arr.find(
+              (m: any) => m?.type === "background" || m?.colours || m?.background
+            );
+            return found?.colours || found?.background || null;
+          }
+        } catch {}
+        return null;
+      })();
+
+      const resolvedColours =
+        (typeof item?.colours === "string" && item.colours.trim()) ||
+        (typeof item?.background === "string" && item.background.trim()) ||
+        (typeof item?.background_style === "string" && item.background_style.trim()) ||
+        bgFromMeta ||
+        null;
+
+      const normMedia = normalizeMedia(item);
+      const hasRealMedia = Boolean(
+        (normMedia.media && normMedia.media.length > 0) ||
+        (normMedia.media_urls && normMedia.media_urls.length > 0) ||
+        (normMedia.media_url && normMedia.media_url !== "null" && normMedia.media_url !== "undefined")
+      );
+
       const normalized: any = {
         ...item,
-        ...normalizeMedia(item),
-        colours: item?.colours || item?.background || null,
-        background: item?.colours || item?.background || null,
-        background_style: item?.colours || item?.background || null,
+        ...normMedia,
+        media_url: resolvedColours && !hasRealMedia ? null : normMedia.media_url,
+        media_urls: resolvedColours && !hasRealMedia ? [] : normMedia.media_urls,
+        colours: resolvedColours,
+        background: resolvedColours,
+        background_style: resolvedColours,
         description: item?.description ?? item?.content ?? "",
         is_verified: isVerified,
         verified: isVerified,
@@ -2749,12 +2782,36 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           );
 
           const spImages = parseJsonArrayUrls(sp.images || sp.media_urls);
+          const spBgFromMeta = (() => {
+            try {
+              const arr = Array.isArray(sp?.media_meta)
+                ? sp.media_meta
+                : typeof sp?.media_meta === "string"
+                ? JSON.parse(sp.media_meta)
+                : [];
+              if (Array.isArray(arr)) {
+                const found = arr.find(
+                  (m: any) => m?.type === "background" || m?.colours || m?.background
+                );
+                return found?.colours || found?.background || null;
+              }
+            } catch {}
+            return null;
+          })();
+
+          const spResolvedColours =
+            (typeof sp?.colours === "string" && sp.colours.trim()) ||
+            (typeof sp?.background === "string" && sp.background.trim()) ||
+            (typeof sp?.background_style === "string" && sp.background_style.trim()) ||
+            spBgFromMeta ||
+            null;
+
           const normalizedShared = {
             ...sp,
             ...normalizeMedia(sp),
-            colours: sp?.colours || sp?.background || null,
-            background: sp?.colours || sp?.background || null,
-            background_style: sp?.colours || sp?.background || null,
+            colours: spResolvedColours,
+            background: spResolvedColours,
+            background_style: spResolvedColours,
             id: Number(sp.id || sp.product_id || 0),
             ...(isProductLike ? { product_id: Number(sp.product_id || sp.id || 0) } : {}),
             title: sp.title || sp.name || "",
