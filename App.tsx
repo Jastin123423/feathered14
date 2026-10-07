@@ -10614,36 +10614,47 @@ const reactToFeedItem = useCallback(async (item: any, type: ReactionType) => {
 
   try {
     let endpoint = '';
-    switch (itemType) {
-      case 'story':
-        endpoint = `/api/stories/${itemId}/react`;
-        break;
-      case 'event':
-        endpoint = `/api/events/${itemId}/react`;
-        break;
-      case 'group_post':
-        endpoint = `/api/groups/${item.group_id}/posts/${itemId}/react`;
-        break;
-      case 'product':
-        endpoint = `/api/products/${itemId}/react`;
-        break;
-      case 'reel':
-        endpoint = `/api/posts/${itemId}/react`;
-        break;
-      case 'music':
-      case 'song':
-        endpoint = `/api/songs/${itemId}/react`;
-        break;
-      case 'podcast':
-        endpoint = `/api/podcasts/${itemId}/react`;
-        break;
-      default:
-        endpoint = `/api/posts/${itemId}/react`;
+    let bodyPayload: any = { type, user_id: meId };
+
+    const isGroupItem = itemType === 'group_post' || Boolean(item?.group_id || item?.group_post_id || item?.source === 'group_post' || item?.meta?.group_id);
+
+    if (isGroupItem) {
+      endpoint = '/api/group-post-likes';
+      const targetPostId = Number(item?.post_id || item?.group_post_id || item?.id || itemId);
+      bodyPayload = {
+        user_id: meId,
+        post_id: targetPostId,
+        type,
+      };
+    } else {
+      switch (itemType) {
+        case 'story':
+          endpoint = `/api/stories/${itemId}/react`;
+          break;
+        case 'event':
+          endpoint = `/api/events/${itemId}/react`;
+          break;
+        case 'product':
+          endpoint = `/api/products/${itemId}/react`;
+          break;
+        case 'reel':
+          endpoint = `/api/posts/${itemId}/react`;
+          break;
+        case 'music':
+        case 'song':
+          endpoint = `/api/songs/${itemId}/react`;
+          break;
+        case 'podcast':
+          endpoint = `/api/podcasts/${itemId}/react`;
+          break;
+        default:
+          endpoint = `/api/posts/${itemId}/react`;
+      }
     }
 
     const data = await apiFetch(endpoint, {
       method: 'POST',
-      body: JSON.stringify({ type, user_id: meId }),
+      body: JSON.stringify(bodyPayload),
     });
 
     if (data?.success && ('reactions_count' in data || 'my_reaction' in data)) {

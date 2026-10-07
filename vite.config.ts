@@ -928,6 +928,57 @@ function apiDevPlugin(): Plugin {
           });
         }
 
+        if (pathname === '/api/group-post-likes') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          return req.on('end', () => {
+            try {
+              const parsed = JSON.parse(body || '{}');
+              const postId = Number(parsed.post_id || parsed.group_post_id || 0);
+              const userId = Number(parsed.user_id || 0);
+              const reactionType = parsed.type || 'like';
+
+              let post = devPosts.find(p => Number(p.id) === postId || Number(p.post_id) === postId);
+              let reacted = true;
+              let my_reaction: any = reactionType;
+              let count = 1;
+
+              if (post) {
+                const prevMy = post.my_reaction || post.myReaction;
+                reacted = prevMy !== reactionType;
+                my_reaction = reacted ? reactionType : null;
+                const prevCount = Number(post.reactions_count || post.likesCount || 0);
+                count = reacted ? (prevMy ? prevCount : prevCount + 1) : Math.max(0, prevCount - 1);
+                post.my_reaction = my_reaction;
+                post.myReaction = my_reaction;
+                post.reactions_count = count;
+                post.reactionsCount = count;
+                post.likesCount = count;
+              }
+
+              res.statusCode = 200;
+              return res.end(JSON.stringify({
+                success: true,
+                reacted,
+                my_reaction,
+                reactions_count: count,
+                likes_count: count,
+                liked: reacted && my_reaction === 'like'
+              }));
+            } catch {
+              res.statusCode = 200;
+              return res.end(JSON.stringify({
+                success: true,
+                reacted: true,
+                my_reaction: 'like',
+                reactions_count: 1,
+                likes_count: 1,
+                liked: true
+              }));
+            }
+          });
+        }
+
         if (pathname === '/api/group-invites') {
           if (req.method === 'GET') {
             res.statusCode = 200;

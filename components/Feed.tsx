@@ -2015,6 +2015,9 @@ export const ShareBottomSheet = memo(
     const [subModal, setSubModal] = useState<'none' | 'tag' | 'location' | 'feeling'>('none');
     const [searchFriendQuery, setSearchFriendQuery] = useState('');
     const [groupSearchQuery, setGroupSearchQuery] = useState('');
+    const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+    const [isSharingToGroups, setIsSharingToGroups] = useState(false);
+    const [groupShareLimitWarning, setGroupShareLimitWarning] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
     const [availableGroups, setAvailableGroups] = useState<Group[]>(groups || []);
     const sheetRef = useRef<HTMLDivElement>(null);
@@ -2189,10 +2192,86 @@ export const ShareBottomSheet = memo(
       setTimeout(() => {
         onClose();
         setActiveFlow('sheet');
+        setSelectedGroupIds([]);
+        setIsSharingToGroups(false);
+        setGroupShareLimitWarning(false);
         setSubModal('none');
         setShowAudienceMenu(false);
         setIsAnimating(false);
       }, 200);
+    };
+
+    const handleToggleGroupSelect = (groupId: number) => {
+      if (isSharingToGroups) return;
+      setSelectedGroupIds((prev) => {
+        if (prev.includes(groupId)) {
+          setGroupShareLimitWarning(false);
+          return prev.filter((id) => id !== groupId);
+        }
+        if (prev.length >= 5) {
+          setGroupShareLimitWarning(true);
+          setTimeout(() => setGroupShareLimitWarning(false), 3000);
+          return prev;
+        }
+        return [...prev, groupId];
+      });
+    };
+
+    const handleBatchShareToGroups = async () => {
+      if (!currentUser) {
+        alert('Please login to share.');
+        return;
+      }
+      if (selectedGroupIds.length === 0 || isSharingToGroups) return;
+      setIsSharingToGroups(true);
+      try {
+        let lastResponse: any = null;
+        let successCount = 0;
+        const msg = shareMessage;
+
+        for (const gId of selectedGroupIds) {
+          try {
+            const endpoint = getShareEndpoint('group');
+            const payload = {
+              ...getSharePayload('group', gId),
+              message: msg,
+              group_id: gId,
+              target_group_id: gId,
+            };
+            const response = await apiFetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-user-id': String(currentUser.id),
+              },
+              body: JSON.stringify(payload),
+            });
+            lastResponse = response;
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to share to group ${gId}:`, err);
+          }
+        }
+
+        if (successCount > 0 && onShareComplete) {
+          const nextShares = safeNumber(
+            lastResponse?.shares ?? lastResponse?.shares_count ?? lastResponse?.share_count,
+            safeNumber(post.shares ?? post.shares_count ?? 0, 0) + successCount
+          );
+          onShareComplete('group', {
+            success: true,
+            destination: 'group',
+            selected_groups_count: successCount,
+            data: lastResponse,
+            shares: nextShares,
+          });
+        }
+        closeSheet();
+      } catch (err) {
+        console.error('Failed to share to selected groups:', err);
+      } finally {
+        setIsSharingToGroups(false);
+      }
     };
 
     const handleShareAction = async (destination: string, customMessage?: string, targetGroupId?: number) => {
@@ -2318,71 +2397,136 @@ export const ShareBottomSheet = memo(
       return (
         <div className="fixed inset-0 z-[500] bg-[#050B18] flex flex-col animate-slide-up">
           <div className="flex items-center justify-between p-4 border-b border-[#1E293B]">
-            <div className="flex items-center gap-4">
-              <i
-                className="fas fa-arrow-left text-[#F8FAFC] text-xl cursor-pointer"
-                onClick={() => setActiveFlow('sheet')}
-              ></i>
-              <h3 className="text-[#F8FAFC] text-[22px] font-medium">
-                Share to Groups & Brands
-              </h3>
-            </div>
-            {filteredGroups.length > 0 && (
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => handleShareAction('group', undefined, filteredGroups[0].id)}
-                className="text-[#1877F2] font-bold text-[19px] cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setSelectedGroupIds([]);
+                  setGroupShareLimitWarning(false);
+                  setActiveFlow('sheet');
+                }}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#1E293B] text-[#F8FAFC] transition-colors cursor-pointer"
+                aria-label="Back"
               >
-                SHARE
+                <i className="fas fa-arrow-left text-lg"></i>
               </button>
-            )}
-          </div>
-          <div className="p-4 border-b border-[#1E293B]">
-            <div className="text-[#94A3B8] text-[15px] mb-2">
-              Share with groups you're in
+              <div>
+                <h3 className="text-[#F8FAFC] text-[19px] font-semibold leading-tight">
+                  Share to Groups
+                </h3>
+                <div className="text-[#94A3B8] text-[13px]">
+                  Select up to 5 groups ({selectedGroupIds.length}/5)
+                </div>
+              </div>
             </div>
-            <input
-              type="text"
-              placeholder="Search groups..."
-              value={groupSearchQuery}
-              onChange={(e) => setGroupSearchQuery(e.target.value)}
-              className="w-full bg-[#1E293B] text-[#F8FAFC] px-4 py-2 rounded-lg text-[15px] outline-none border border-[#1E293B]"
-            />
+            <button
+              type="button"
+              onClick={handleBatchShareToGroups}
+              disabled={selectedGroupIds.length === 0 || isSharingToGroups}
+              className={`px-4 py-2 rounded-lg font-bold text-[14px] flex items-center gap-2 transition-all cursor-pointer ${
+                selectedGroupIds.length === 0 || isSharingToGroups
+                  ? 'bg-[#1E293B] text-[#64748B] cursor-not-allowed opacity-60'
+                  : 'bg-[#1877F2] hover:bg-[#166fe5] text-white active:scale-95 shadow-md shadow-[#1877F2]/20'
+              }`}
+            >
+              {isSharingToGroups ? (
+                <>
+                  <i className="fas fa-circle-notch fa-spin text-sm"></i>
+                  <span>Sharing...</span>
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-share text-sm"></i>
+                  <span>Share {selectedGroupIds.length > 0 ? `(${selectedGroupIds.length})` : ''}</span>
+                </>
+              )}
+            </button>
           </div>
+
+          {groupShareLimitWarning && (
+            <div className="bg-[#1E293B] text-[#F59E0B] px-4 py-2 text-[13px] flex items-center gap-2 border-b border-[#334155] animate-fade-in">
+              <i className="fas fa-exclamation-circle"></i>
+              <span>You can select a maximum of 5 groups at once.</span>
+            </div>
+          )}
+
+          <div className="p-4 border-b border-[#1E293B]">
+            <div className="relative">
+              <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] text-sm"></i>
+              <input
+                type="text"
+                placeholder="Search groups..."
+                value={groupSearchQuery}
+                onChange={(e) => setGroupSearchQuery(e.target.value)}
+                className="w-full bg-[#1E293B] text-[#F8FAFC] pl-10 pr-4 py-2.5 rounded-lg text-[15px] outline-none border border-[#334155] focus:border-[#1877F2] placeholder-[#64748B]"
+              />
+              {groupSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setGroupSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#F8FAFC]"
+                >
+                  <i className="fas fa-times-circle"></i>
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="flex-1 p-4 overflow-y-auto">
             {filteredGroups.length === 0 ? (
-              <div className="text-center py-10">
-                <i className="fas fa-users text-4xl text-[#1E293B] mb-3"></i>
-                <div className="text-[#F8FAFC] text-[17px]">No groups found</div>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 rounded-full bg-[#1E293B] flex items-center justify-center mx-auto mb-3">
+                  <i className="fas fa-users text-2xl text-[#64748B]"></i>
+                </div>
+                <div className="text-[#F8FAFC] text-[16px] font-medium">No groups found</div>
+                <div className="text-[#94A3B8] text-[13px] mt-1">
+                  {groupSearchQuery ? 'Try a different search term' : 'Join groups to share posts with them'}
+                </div>
               </div>
             ) : (
-              filteredGroups.map((group) => (
-                <div
-                  key={group.id}
-                  className="flex items-center justify-between p-3 hover:bg-[#1E293B] rounded-lg mb-2"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={group.image || group.profile_image || avatarFrom(group)}
-                      alt=""
-                      className="w-10 h-10 rounded-full object-cover shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <div className="text-[#F8FAFC] font-medium text-[15px] truncate">
-                        {group.name}
-                      </div>
-                      <div className="text-[#94A3B8] text-[13px]">
-                        {group.members_count || group.members?.length || 0} members
+              filteredGroups.map((group) => {
+                const isSelected = selectedGroupIds.includes(group.id);
+                return (
+                  <div
+                    key={group.id}
+                    onClick={() => handleToggleGroupSelect(group.id)}
+                    className={`flex items-center justify-between p-3 rounded-xl mb-2 cursor-pointer transition-all border select-none ${
+                      isSelected
+                        ? 'bg-[#1E293B] border-[#1877F2]/50 shadow-sm'
+                        : 'hover:bg-[#1E293B]/60 border-transparent bg-[#0B132B]/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={group.image || group.profile_image || avatarFrom(group)}
+                        alt=""
+                        className="w-11 h-11 rounded-full object-cover shrink-0 border border-[#1E293B]"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-[#F8FAFC] font-semibold text-[15px] truncate">
+                          {group.name}
+                        </div>
+                        <div className="text-[#94A3B8] text-[13px]">
+                          {group.members_count || group.members?.length || 0} members
+                        </div>
                       </div>
                     </div>
+
+                    {/* Small box to tick (checkbox) */}
+                    <div
+                      className={`w-6 h-6 rounded-md flex items-center justify-center transition-all shrink-0 ml-3 border cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#1877F2] border-[#1877F2] text-white shadow-sm scale-105'
+                          : 'border-[#475569] bg-[#0F172A] hover:border-[#94A3B8]'
+                      }`}
+                    >
+                      {isSelected && (
+                        <i className="fas fa-check text-xs"></i>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handleShareAction('group', undefined, group.id)}
-                    className="px-4 py-1.5 bg-[#1877F2] hover:bg-[#166fe5] text-white rounded-lg text-[15px] font-semibold transition-colors cursor-pointer shrink-0 ml-2"
-                  >
-                    Share
-                  </button>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -7046,7 +7190,7 @@ export const Post = memo(
     const group = p?.group || (rawGroupId ? groups?.find((g) => g.id === rawGroupId) : (rawGroupName ? groups?.find((g) => g.name?.toLowerCase() === rawGroupName.toLowerCase()) : undefined));
     const groupId = rawGroupId || group?.id || 0;
     const groupName = rawGroupName || group?.name || '';
-    const isGroupPost = !!(groupId || group || groupName);
+    const isGroupPost = !!(groupId || group || groupName || p?.item_type === 'group_post' || p?.source === 'group_post' || p?.group_post_id);
 
     const groupCategory = String(
       p?.group_category ||
@@ -7668,15 +7812,50 @@ export const Post = memo(
     };
 
     // ✅ UPDATED: Complete handleReactClick with proper group post detection
-      
-   const handleReactClick = async (type: ReactionType) => {
-  if (!currentUser) {
-    alert("Please login to react.");
-    return;
-  }
+    const handleReactClick = async (type: ReactionType) => {
+      if (!currentUser) {
+        alert("Please login to react.");
+        return;
+      }
 
-  onReact?.(p, type);
-};
+      const prevMy = p?.my_reaction ?? p?.myReaction ?? null;
+      const nextMy = prevMy === type ? null : type;
+      const prevCount = safeNumber(
+        p?.reactions_count ?? p?.reactionsCount ?? p?.likesCount ?? p?.likes_count,
+        0
+      );
+      let nextCount = prevCount;
+      if (!prevMy && nextMy) {
+        nextCount = prevCount + 1;
+      } else if (prevMy && !nextMy) {
+        nextCount = Math.max(0, prevCount - 1);
+      }
+
+      const prevArr = safeArray<any>(p?.reactions);
+      const withoutMe = prevArr.filter((r: any) => Number(r?.user_id) !== Number(currentUser.id));
+      const nextArr = nextMy ? [...withoutMe, { user_id: currentUser.id, type: nextMy }] : withoutMe;
+
+      setLocalPost((prev: any) => ({
+        ...prev,
+        my_reaction: nextMy,
+        myReaction: nextMy,
+        reactions_count: nextCount,
+        reactionsCount: nextCount,
+        likesCount: nextCount,
+        reactions: nextArr,
+      }));
+
+      onReact?.(p, type);
+
+      if (isGroupPost && onToggleGroupPostLike) {
+        try {
+          const targetPostId = Number(p?.post_id || p?.group_post_id || p?.id || postId);
+          await onToggleGroupPostLike(targetPostId, type);
+        } catch (err) {
+          console.error('Failed to toggle group post like:', err);
+        }
+      }
+    };
       
       
 
@@ -12290,6 +12469,7 @@ export const Feed = memo(({
 
   onDeletePost,
   onEditPost,
+  onToggleGroupPostLike,
 
   // ✅ new from App.tsx
   onLoadMoreFeed,
@@ -12672,6 +12852,7 @@ export const Feed = memo(({
   onOpenGroup={onOpenGroup}
   onDelete={onDeletePost}
   onEdit={onEditPost}
+  onToggleGroupPostLike={onToggleGroupPostLike}
   onApplyToJob={onApplyToJob}
   
   pushButton={showPushButton ? (
