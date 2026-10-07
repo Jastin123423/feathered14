@@ -290,7 +290,9 @@ export const ShareScreen: React.FC<ShareScreenProps> = ({
 
       const itemId = Number(post?.id ?? post?.post_id ?? 0);
       let endpoint = `/api/posts/${itemId}/share`;
-      if (isVideo) {
+      if (isGroup) {
+        endpoint = '/api/groups/posts/share';
+      } else if (isVideo) {
         endpoint = `/api/posts/${itemId}/share`;
       } else if (isStory) {
         const storyId = Number(post?.story_id || post?.id || 0);
@@ -301,8 +303,6 @@ export const ShareScreen: React.FC<ShareScreenProps> = ({
       } else if (isEvent) {
         const evId = Number(post?.event_id || post?.id || 0);
         endpoint = `/api/events/${evId}/share`;
-      } else if (isGroup) {
-        endpoint = '/api/groups/posts/share';
       } else if (isSong) {
         const sId = Number(post?.song_id || post?.song_id2 || (post?.meta as any)?.song?.id || (post?.meta as any)?.original_song_id || (post?.shared_song as any)?.id || post?.id || 0);
         endpoint = `/api/songs/${sId}/share`;
@@ -310,7 +310,9 @@ export const ShareScreen: React.FC<ShareScreenProps> = ({
         endpoint = `/api/podcasts/${itemId}/share`;
       }
 
-      const itemType = isVideo
+      const itemType = isGroup
+        ? 'group_post'
+        : isVideo
         ? 'post'
         : isStory
         ? 'story'
@@ -322,8 +324,6 @@ export const ShareScreen: React.FC<ShareScreenProps> = ({
         ? 'music'
         : isPodcast
         ? 'podcast'
-        : isGroup
-        ? 'group_post'
         : post?.item_type || post?.source || 'post';
 
       const songTargetId = Number(post?.song_id || post?.song_id2 || (post?.meta as any)?.song?.id || (post?.meta as any)?.original_song_id || (post?.shared_song as any)?.id || post?.id || itemId || 0);
@@ -348,7 +348,8 @@ export const ShareScreen: React.FC<ShareScreenProps> = ({
       if (itemType === 'event') payload.event_id = itemId;
       if (itemType === 'group_post') {
         payload.post_id = itemId;
-        payload.group_id = post.group_id;
+        payload.group_id = Number(post?.group_id || post?.groupId || post?.meta?.group_id || 0);
+        payload.source = 'group';
       }
       if (itemType === 'music' || itemType === 'song') {
         payload.song_id = songTargetId;

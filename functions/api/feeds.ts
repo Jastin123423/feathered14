@@ -1955,6 +1955,190 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     `;
 
     // ============================================================
+    // 4b) GROUP POST SHARES
+    // ============================================================
+    const whereGroupPostShares: string[] = [];
+    const bindsGroupPostShares: any[] = [];
+
+    whereGroupPostShares.push(`(gps.destination = 'feed' OR gps.destination = 'profile' OR gps.destination IS NULL OR gps.destination = '')`);
+
+    if (cursor && cursor.trim()) {
+      whereGroupPostShares.push(`gps.created_at < ?`);
+      bindsGroupPostShares.push(cursor.trim());
+    }
+    if (seen.length > 0) {
+      whereGroupPostShares.push(`gps.id NOT IN (${seen.map(() => "?").join(",")})`);
+      bindsGroupPostShares.push(...seen);
+    }
+
+    const whereGroupPostSharesSql = whereGroupPostShares.length
+      ? `WHERE ${whereGroupPostShares.join(" AND ")}`
+      : "";
+
+    const baseSelectGroupPostShares = `
+      SELECT
+        'group_post' AS source,
+        'group_post' AS item_type,
+
+        gps.id AS id,
+        ('group_post_share:' || CAST(gps.id AS TEXT)) AS feed_key,
+
+        gps.created_at AS created_at,
+        NULL AS updated_at,
+
+        NULL AS post_id, gp.id AS shared_post_id, NULL AS reel_id, NULL AS song_id2, NULL AS event_id,
+        gp.id AS group_post_id,
+        NULL AS product_id2,
+
+        gps.user_id AS user_id,
+        gps.user_id AS owner_id,
+        'user_id' AS owner_field,
+        COALESCE(su.username, 'user') AS username,
+        COALESCE(su.name, su.username, 'User') AS name,
+        CASE
+          WHEN su.profile_image_url LIKE 'data:%' THEN NULL
+          WHEN length(su.profile_image_url) > 300 THEN NULL
+          ELSE su.profile_image_url
+        END AS profile_image_url,
+        CASE
+          WHEN su.profile_image_url LIKE 'data:%' THEN NULL
+          WHEN length(su.profile_image_url) > 300 THEN NULL
+          ELSE su.profile_image_url
+        END AS avatar_url,
+        COALESCE(su.is_verified, 0) AS is_verified,
+        COALESCE(su.role, 'user') AS role,
+
+        gp.group_id AS group_id,
+        COALESCE(g.name, 'Group') AS group_name,
+        CASE
+          WHEN g.profile_image LIKE 'data:%' THEN NULL
+          WHEN length(g.profile_image) > 300 THEN NULL
+          ELSE g.profile_image
+        END AS group_image,
+
+        COALESCE(gps.message, gp.content, '') AS content,
+        gp.visibility AS visibility,
+        0 AS views,
+        (SELECT COUNT(*) FROM group_post_shares s WHERE s.group_post_id = gp.id) AS shares,
+
+        CASE
+          WHEN gp.media_url LIKE 'data:%' THEN NULL
+          WHEN length(gp.media_url) > 300 THEN NULL
+          ELSE gp.media_url
+        END AS media_url,
+
+        CASE
+          WHEN gp.media_url LIKE 'data:%' THEN NULL
+          WHEN length(gp.media_url) > 300 THEN NULL
+          ELSE
+            CASE
+              WHEN gp.media_url LIKE '%.mp4%' OR gp.media_url LIKE '%.webm%' OR gp.media_url LIKE '%.mov%' OR gp.media_url LIKE '%.m4v%' OR gp.media_url LIKE '%.m3u8%' THEN 'video'
+              ELSE 'image'
+            END
+        END AS media_type,
+
+        CASE
+          WHEN gp.media_urls LIKE 'data:%' THEN NULL
+          WHEN length(gp.media_urls) > 5000 THEN NULL
+          ELSE gp.media_urls
+        END AS media_urls,
+
+        gp.media_types AS media_types,
+        gp.media_meta AS media_meta,
+
+        (SELECT COUNT(*) FROM group_post_comments gpc WHERE gpc.group_post_id = gp.id AND COALESCE(gpc.is_deleted,0) = 0) AS comments_count,
+        (SELECT COUNT(*) FROM group_post_reactions gpr WHERE gpr.group_post_id = gp.id) AS reactions_count,
+        (SELECT gpr.type FROM group_post_reactions gpr WHERE gpr.group_post_id = gp.id AND gpr.user_id = ? LIMIT 1) AS my_reaction,
+
+        NULL AS reactor_name,
+        NULL AS reactions_preview,
+        NULL AS reactions_by_type,
+
+        NULL AS video_url, NULL AS caption, NULL AS song_name, NULL AS audio_url,
+        0 AS audio_start, 0 AS audio_end,
+        gp.location AS location, NULL AS sound_key, NULL AS sound_id,
+
+        NULL AS song_title, NULL AS song_artist_name, NULL AS song_album_name,
+        NULL AS song_cover_image_url, NULL AS song_duration_seconds,
+        NULL AS song_genre, NULL AS song_likes_count, NULL AS song_plays_count,
+
+        NULL AS event_date, NULL AS event_description,
+        NULL AS attending_count, NULL AS interested_count,
+        NULL AS my_rsvp_status,
+
+        NULL AS type, NULL AS post_type, NULL AS kind,
+        json_object(
+          'job_title', gp.job_title,
+          'company', gp.company,
+          'job_type', gp.job_type,
+          'salary', gp.salary,
+          'location', gp.location,
+          'street', gp.street,
+          'district', gp.district,
+          'region', gp.region,
+          'country', gp.country,
+          'application_type', gp.application_type,
+          'application_value', gp.application_value,
+          'expiry_date', gp.expiry_date,
+          'price', gp.price,
+          'currency', gp.currency,
+          'condition', gp.condition,
+          'status', gp.status,
+          'group_category', g.category,
+          'is_shared', 1,
+          'shared_by_user_id', gps.user_id,
+          'shared_by_name', COALESCE(su.name, su.username, 'User'),
+          'shared_by_username', su.username,
+          'shared_by_avatar', su.profile_image_url,
+          'shared_by_verified', COALESCE(su.is_verified, 0),
+          'shared_message', gps.message,
+          'shared_from', 'group',
+          'original_owner_name', g.name,
+          'original_author_name', COALESCE(u.name, u.username, 'User')
+        ) AS meta,
+
+        json_object(
+          'id', gp.id,
+          'group_id', gp.group_id,
+          'group_name', g.name,
+          'group_image', g.profile_image,
+          'content', gp.content,
+          'media_url', gp.media_url,
+          'media_urls', gp.media_urls,
+          'media_types', gp.media_types,
+          'media_meta', gp.media_meta,
+          'job_title', gp.job_title,
+          'company', gp.company,
+          'job_type', gp.job_type,
+          'salary', gp.salary,
+          'location', gp.location,
+          'application_type', gp.application_type,
+          'application_value', gp.application_value,
+          'price', gp.price,
+          'currency', gp.currency,
+          'condition', gp.condition,
+          'status', gp.status,
+          'author', json_object(
+            'id', u.id,
+            'name', COALESCE(u.name, u.username, 'User'),
+            'username', u.username,
+            'avatar_url', u.profile_image_url,
+            'profile_image_url', u.profile_image_url,
+            'is_verified', COALESCE(u.is_verified, 0)
+          )
+        ) AS shared_post,
+        NULL AS shared_product,
+        NULL AS shared_song,
+        NULL AS shared_event,
+        NULL AS shared_story
+      FROM group_post_shares gps
+      JOIN group_posts gp ON gp.id = gps.group_post_id
+      LEFT JOIN groups g ON g.id = gp.group_id
+      LEFT JOIN users su ON su.id = gps.user_id
+      LEFT JOIN users u ON u.id = gp.user_id
+    `;
+
+    // ============================================================
     // 5) PRODUCTS feed-injection
     // ============================================================
     const whereProductsFeed: string[] = [];
@@ -2394,6 +2578,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       ? freshGroupPostsRes.results
       : [];
 
+    let freshGroupPostShares: any[] = [];
+    try {
+      const res = await env.DB.prepare(
+        `${baseSelectGroupPostShares} ${whereGroupPostSharesSql} ORDER BY gps.created_at DESC LIMIT ?`
+      )
+        .bind(reactionUserId, ...bindsGroupPostShares, freshCount)
+        .all();
+      freshGroupPostShares = Array.isArray(res?.results) ? res.results : [];
+    } catch (_) {}
+
     const freshProductsFeedRes = await env.DB.prepare(
       `${baseSelectProductsFeed} ${whereProductsFeedSql} ORDER BY pr.created_at DESC LIMIT ?`
     )
@@ -2429,6 +2623,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     let exploreSongs: any[] = [];
     let exploreEvents: any[] = [];
     let exploreGroupPosts: any[] = [];
+    let exploreGroupPostShares: any[] = [];
     let exploreProductsFeed: any[] = [];
     let exploreAds: any[] = [];
     let exploreProducts: any[] = [];
@@ -2510,6 +2705,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         ? exploreGroupPostsRes.results
         : [];
 
+      try {
+        const res = await env.DB.prepare(
+          `${baseSelectGroupPostShares} ${whereGroupPostSharesSql} ORDER BY RANDOM() LIMIT ?`
+        )
+          .bind(reactionUserId, ...bindsGroupPostShares, exploreCount)
+          .all();
+        exploreGroupPostShares = Array.isArray(res?.results) ? res.results : [];
+      } catch (_) {}
+
       const exploreProductsFeedRes = await env.DB.prepare(
         `${baseSelectProductsFeed} ${whereProductsFeedSql} ORDER BY RANDOM() LIMIT ?`
       )
@@ -2558,6 +2762,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       ...freshSongs,
       ...freshEvents,
       ...freshGroupPosts,
+      ...freshGroupPostShares,
       ...freshProductsFeed,
       ...freshAds,
       ...explorePosts,
@@ -2569,6 +2774,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       ...exploreSongs,
       ...exploreEvents,
       ...exploreGroupPosts,
+      ...exploreGroupPostShares,
       ...exploreProductsFeed,
       ...exploreAds,
     ];
@@ -2710,6 +2916,18 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           if (metaObj.application_value && !normalized.application_value) normalized.application_value = metaObj.application_value;
           if (metaObj.expiry_date && !normalized.expiry_date) normalized.expiry_date = metaObj.expiry_date;
           if (metaObj.group_category && !normalized.group_category) normalized.group_category = metaObj.group_category;
+
+          if (metaObj.is_shared === 1 || String(item?.feed_key || "").startsWith("group_post_share:")) {
+            normalized.is_shared = true;
+            normalized.is_group_post = true;
+            normalized.shared_by_user_id = metaObj.shared_by_user_id || item.user_id;
+            normalized.shared_by_name = metaObj.shared_by_name || item.name;
+            normalized.shared_by_username = metaObj.shared_by_username || item.username;
+            normalized.shared_by_avatar = metaObj.shared_by_avatar || item.avatar_url;
+            normalized.shared_by_verified = Boolean(metaObj.shared_by_verified || item.is_verified);
+            normalized.shared_message = metaObj.shared_message || "";
+            normalized.original_owner_name = metaObj.original_owner_name || item.group_name || "Group";
+          }
         }
       }
 

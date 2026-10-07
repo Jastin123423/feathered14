@@ -127,7 +127,7 @@ const GROUP_CATEGORIES: CategoryOption[] = [
   },
   {
     id: 'recruitment',
-    label: 'Recruitment',
+    label: 'Careers & Recruitment',
     description: 'Find talent, job opportunities, and professional networking',
     icon: 'fas fa-briefcase',
     previewIcon: 'fas fa-user-plus',
@@ -144,6 +144,13 @@ const GROUP_CATEGORIES: CategoryOption[] = [
     features: ['Item listings', 'Price tags', 'Location filtering', 'Sold/Pending status']
   }
 ];
+
+export const isCareerCategory = (cat?: string, name?: string) => {
+  const c = String(cat || '').toLowerCase();
+  const n = String(name || '').toLowerCase();
+  return c === 'recruitment' || c === 'career' || c === 'careers' || c === 'job' || c === 'jobs' ||
+    n.includes('career') || n.includes('job') || n.includes('recruitment') || n.includes('hiring') || n.includes('employment');
+};
 
 const CURRENCY_OPTIONS = [
   { code: 'TSh', symbol: 'TSh', name: 'Tanzanian Shilling' },
@@ -1255,7 +1262,27 @@ const RecruitmentPost: React.FC<any> = (props) => {
           <div className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer" onClick={() => onProfileClick(author.id)}>
             <img src={avatarFrom(author)} alt="" className="w-10 h-10 rounded-full object-cover border border-[#1E293B]" />
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap"><h4 className="font-bold text-[#F8FAFC] text-[21px] hover:underline truncate">{author.name || 'User'}</h4>{Boolean(author.is_verified) && (<VerifiedBadge size={21} className="shrink-0" />)}</div>
+              {Boolean((post as any).shared_post_id || (post as any).shared_from || (post as any).original_owner_name) ? (
+                (post as any).shared_from === 'group' || (post as any).original_group_name || (post as any).shared_group_name ? (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-bold text-[#F8FAFC] text-[20px] sm:text-[21px] hover:underline truncate">{(post as any).shared_user_name || author.name || 'User'}</h4>
+                    {Boolean(author.is_verified) && <VerifiedBadge size={20} className="shrink-0" />}
+                    <span className="text-[#94A3B8] font-normal text-[15px] sm:text-[16px]">shared a post from</span>
+                    <span className="font-bold text-[#38BDF8] text-[20px] sm:text-[21px] truncate">{(post as any).original_group_name || (post as any).shared_group_name || (post as any).original_owner_name || 'Group'}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-bold text-[#F8FAFC] text-[20px] sm:text-[21px] hover:underline truncate">{(post as any).shared_user_name || author.name || 'User'}</h4>
+                    {Boolean(author.is_verified) && <VerifiedBadge size={20} className="shrink-0" />}
+                    <span className="text-[#94A3B8] font-normal text-[15px] sm:text-[16px]">shared</span>
+                    <span className="font-bold text-[#38BDF8] text-[20px] sm:text-[21px] hover:underline truncate cursor-pointer" onClick={(e) => { e.stopPropagation(); if ((post as any).original_owner_id) onProfileClick((post as any).original_owner_id); }}>
+                      {(post as any).original_owner_name || 'User'}'s post
+                    </span>
+                  </div>
+                )
+              ) : (
+                <div className="flex items-center gap-1.5 flex-wrap"><h4 className="font-bold text-[#F8FAFC] text-[21px] hover:underline truncate">{author.name || 'User'}</h4>{Boolean(author.is_verified) && (<VerifiedBadge size={21} className="shrink-0" />)}</div>
+              )}
               <div className="flex items-center gap-1.5 text-[#94A3B8] text-[13px]"><span>{createdAtLabel}</span><span>•</span><i className="fas fa-briefcase text-[12px]"></i><span>Recruitment</span></div>
             </div>
           </div>
@@ -1453,7 +1480,27 @@ const BuySellPost: React.FC<any> = (props) => {
           <div className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer" onClick={() => onProfileClick(author.id)}>
             <img src={avatarFrom(author)} alt="" className="w-10 h-10 rounded-full object-cover border border-[#1E293B]" />
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap"><h4 className="font-bold text-[#F8FAFC] text-[21px] hover:underline truncate">{author.name || 'User'}</h4>{Boolean(author.is_verified) && (<VerifiedBadge size={21} className="shrink-0" />)}</div>
+              {Boolean((post as any).shared_post_id || (post as any).shared_from || (post as any).original_owner_name) ? (
+                (post as any).shared_from === 'group' || (post as any).original_group_name || (post as any).shared_group_name ? (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-bold text-[#F8FAFC] text-[20px] sm:text-[21px] hover:underline truncate">{(post as any).shared_user_name || author.name || 'User'}</h4>
+                    {Boolean(author.is_verified) && <VerifiedBadge size={20} className="shrink-0" />}
+                    <span className="text-[#94A3B8] font-normal text-[15px] sm:text-[16px]">shared a post from</span>
+                    <span className="font-bold text-[#38BDF8] text-[20px] sm:text-[21px] truncate">{(post as any).original_group_name || (post as any).shared_group_name || (post as any).original_owner_name || 'Group'}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-bold text-[#F8FAFC] text-[20px] sm:text-[21px] hover:underline truncate">{(post as any).shared_user_name || author.name || 'User'}</h4>
+                    {Boolean(author.is_verified) && <VerifiedBadge size={20} className="shrink-0" />}
+                    <span className="text-[#94A3B8] font-normal text-[15px] sm:text-[16px]">shared</span>
+                    <span className="font-bold text-[#38BDF8] text-[20px] sm:text-[21px] hover:underline truncate cursor-pointer" onClick={(e) => { e.stopPropagation(); if ((post as any).original_owner_id) onProfileClick((post as any).original_owner_id); }}>
+                      {(post as any).original_owner_name || 'User'}'s post
+                    </span>
+                  </div>
+                )
+              ) : (
+                <div className="flex items-center gap-1.5 flex-wrap"><h4 className="font-bold text-[#F8FAFC] text-[21px] hover:underline truncate">{author.name || 'User'}</h4>{Boolean(author.is_verified) && (<VerifiedBadge size={21} className="shrink-0" />)}</div>
+              )}
               <div className="flex items-center gap-1.5 text-[#94A3B8] text-[13px]"><span>{createdAtLabel}</span><span>•</span><i className="fas fa-store text-[12px]"></i><span>Marketplace</span></div>
             </div>
           </div>
@@ -1592,7 +1639,27 @@ const GeneralGroupPost: React.FC<any> = ({
           <div className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer" onClick={() => onProfileClick(a.id)}>
             <img src={avatarFrom(a)} alt="" className="w-10 h-10 rounded-full object-cover border border-[#1E293B]" />
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap"><h4 className="font-bold text-[#F8FAFC] text-[21px] hover:underline truncate">{a.name || 'User'}</h4>{Boolean(a.is_verified) && (<VerifiedBadge size={21} className="shrink-0" />)}</div>
+              {Boolean((post as any).shared_post_id || (post as any).shared_from || (post as any).original_owner_name) ? (
+                (post as any).shared_from === 'group' || (post as any).original_group_name || (post as any).shared_group_name ? (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-bold text-[#F8FAFC] text-[20px] sm:text-[21px] hover:underline truncate">{(post as any).shared_user_name || a.name || 'User'}</h4>
+                    {Boolean(a.is_verified) && <VerifiedBadge size={20} className="shrink-0" />}
+                    <span className="text-[#94A3B8] font-normal text-[15px] sm:text-[16px]">shared a post from</span>
+                    <span className="font-bold text-[#38BDF8] text-[20px] sm:text-[21px] truncate">{(post as any).original_group_name || (post as any).shared_group_name || (post as any).original_owner_name || 'Group'}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-bold text-[#F8FAFC] text-[20px] sm:text-[21px] hover:underline truncate">{(post as any).shared_user_name || a.name || 'User'}</h4>
+                    {Boolean(a.is_verified) && <VerifiedBadge size={20} className="shrink-0" />}
+                    <span className="text-[#94A3B8] font-normal text-[15px] sm:text-[16px]">shared</span>
+                    <span className="font-bold text-[#38BDF8] text-[20px] sm:text-[21px] hover:underline truncate cursor-pointer" onClick={(e) => { e.stopPropagation(); if ((post as any).original_owner_id) onProfileClick((post as any).original_owner_id); }}>
+                      {(post as any).original_owner_name || 'User'}'s post
+                    </span>
+                  </div>
+                )
+              ) : (
+                <div className="flex items-center gap-1.5 flex-wrap"><h4 className="font-bold text-[#F8FAFC] text-[21px] hover:underline truncate">{a.name || 'User'}</h4>{Boolean(a.is_verified) && (<VerifiedBadge size={21} className="shrink-0" />)}</div>
+              )}
               <div className="flex items-center gap-1.5 text-[#94A3B8] text-[13px]"><span>{createdAtLabel}</span><span>•</span><i className="fas fa-users text-[12px]"></i><span>Group Post</span></div>
             </div>
           </div>
@@ -1668,11 +1735,10 @@ const GeneralGroupPost: React.FC<any> = ({
 
 const GroupPost: React.FC<any> = (props) => {
   const { groupCategory = 'general' } = props;
-  switch (groupCategory) {
-    case 'recruitment': return <RecruitmentPost {...props} />;
-    case 'buy_sell': return <BuySellPost {...props} />;
-    default: return <GeneralGroupPost {...props} />;
-  }
+  const isCareer = groupCategory === 'recruitment' || isCareerCategory(groupCategory) || Boolean(props.post?.job_title);
+  if (isCareer) return <RecruitmentPost {...props} />;
+  if (groupCategory === 'buy_sell' || Boolean(props.post?.price)) return <BuySellPost {...props} />;
+  return <GeneralGroupPost {...props} />;
 };
 //===NORMALIZE GROUP ====
 
@@ -1809,6 +1875,16 @@ function normalizePost(post: any): PostType {
     application_type: post?.application_type,
     application_value: post?.application_value,
     expiry_date: post?.expiry_date,
+    shared_post_id: post?.shared_post_id,
+    shared_from: post?.shared_from,
+    shared_group_id: post?.shared_group_id,
+    shared_group_name: post?.shared_group_name,
+    shared_by_user_id: post?.shared_by_user_id,
+    shared_user_name: post?.shared_user_name,
+    original_owner_name: post?.original_owner_name,
+    original_owner_id: post?.original_owner_id,
+    original_owner_avatar: post?.original_owner_avatar,
+    original_post_content: post?.original_post_content,
   } as any;
 }
 
@@ -2462,6 +2538,8 @@ const pendingUploadTypeRef = useRef<'cover' | 'profile' | null>(null);
           price: '', 
           status: 'available' 
         });
+      } else if (activeGroup?.category === 'recruitment' || isCareerCategory(activeGroup?.category, activeGroup?.name)) {
+        setPostMetadata({ job_type: 'Full-time' });
       } else {
         setPostMetadata({});
       }
@@ -2721,7 +2799,10 @@ const handleGroupClick = async (group: Group) => {
         location: (postMetadata.location || '').trim(),
         status: postMetadata.status || 'available',
       };
-    } else if (activeGroup.category === 'recruitment') {
+    } else if (activeGroup.category === 'recruitment' || isCareerCategory(activeGroup.category, activeGroup.name)) {
+      const hasAppVal = Boolean(postMetadata.application_value && String(postMetadata.application_value).trim().length > 0);
+      const appType = hasAppVal ? (postMetadata.application_type || 'link') : undefined;
+      const appVal = hasAppVal ? String(postMetadata.application_value).trim() : undefined;
       metadata = {
         job_title: postMetadata.job_title,
         company: postMetadata.company,
@@ -2732,8 +2813,8 @@ const handleGroupClick = async (group: Group) => {
         location: (postMetadata.location || [postMetadata.street, postMetadata.district, postMetadata.region, postMetadata.country].filter(Boolean).join(', ') || '').trim(),
         salary: postMetadata.salary,
         job_type: postMetadata.job_type,
-        application_type: postMetadata.application_type,
-        application_value: postMetadata.application_value,
+        application_type: appType,
+        application_value: appVal,
         expiry_date: postMetadata.expiry_date,
       };
     }
@@ -4105,6 +4186,8 @@ return (
             onClick={() => { 
               if (activeGroup?.category === 'buy_sell') { 
                 setPostMetadata({ currency: 'USD', condition: 'Used - Good', location: '', price: '', status: 'available' }); 
+              } else if (activeGroup?.category === 'recruitment' || isCareerCategory(activeGroup?.category, activeGroup?.name)) {
+                setPostMetadata({ job_type: 'Full-time' });
               } else { 
                 setPostMetadata({}); 
               } 
@@ -4115,8 +4198,8 @@ return (
             <div className="flex-1 bg-[#0F172A] hover:bg-[#141E33] transition-colors rounded-2xl px-5 py-3.5 flex items-center justify-between border-0">
               <span className="text-[#94A3B8] text-[19px] font-normal truncate">
                 {activeGroup.category === 'buy_sell' && `Sell something in ${activeGroup.name}...`}
-                {activeGroup.category === 'recruitment' && `Post a job opportunity in ${activeGroup.name}...`}
-                {activeGroup.category !== 'buy_sell' && activeGroup.category !== 'recruitment' && `Write something to ${activeGroup.name}...`}
+                {(activeGroup.category === 'recruitment' || isCareerCategory(activeGroup.category, activeGroup.name)) && `Post a job opportunity in ${activeGroup.name}...`}
+                {activeGroup.category !== 'buy_sell' && activeGroup.category !== 'recruitment' && !isCareerCategory(activeGroup.category, activeGroup.name) && `Write something to ${activeGroup.name}...`}
               </span>
               <i className="fas fa-pen text-[#64748B] text-sm ml-2"></i>
             </div>
@@ -4153,6 +4236,19 @@ return (
               >
                 <i className="fas fa-tag text-[#F7B928] text-lg"></i>
                 <span>Sell Item</span>
+              </button>
+            )}
+            {(activeGroup.category === 'recruitment' || isCareerCategory(activeGroup.category, activeGroup.name)) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPostMetadata({ job_type: 'Full-time' });
+                  setShowGroupPostModal(true);
+                }}
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl hover:bg-[#141E33] text-[#CBD5E1] font-semibold transition-colors"
+              >
+                <i className="fas fa-briefcase text-[#45BD62] text-lg"></i>
+                <span>Post Job</span>
               </button>
             )}
           </div>
@@ -4811,8 +4907,8 @@ return (
                   </button>
                   <h3 className="text-[#F8FAFC] text-lg font-bold">
                     {activeGroup.category === 'buy_sell' && 'Sell an Item'}
-                    {activeGroup.category === 'recruitment' && 'Post a Job Opening'}
-                    {activeGroup.category !== 'buy_sell' && activeGroup.category !== 'recruitment' && 'Create Group Post'}
+                    {(activeGroup.category === 'recruitment' || isCareerCategory(activeGroup.category, activeGroup.name)) && 'Post a Job Opening'}
+                    {activeGroup.category !== 'buy_sell' && activeGroup.category !== 'recruitment' && !isCareerCategory(activeGroup.category, activeGroup.name) && 'Create Group Post'}
                   </h3>
                 </div>
                 <button 
@@ -4863,7 +4959,7 @@ return (
                 )}
                 
                 {/* Recruitment Fields */}
-                {activeGroup.category === 'recruitment' && (
+                {(activeGroup.category === 'recruitment' || isCareerCategory(activeGroup.category, activeGroup.name)) && (
                   <div className="px-5 pt-4 space-y-3 border-b border-[#1E293B]/50 pb-4">
                     <div><label className="block text-[#94A3B8] text-xs font-semibold mb-1">Job Title</label><input type="text" value={postMetadata.job_title || ''} onChange={(e) => setPostMetadata({ ...postMetadata, job_title: e.target.value })} className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B]" placeholder="e.g. Senior Frontend Engineer" /></div>
                     <div><label className="block text-[#94A3B8] text-xs font-semibold mb-1">Company</label><input type="text" value={postMetadata.company || ''} onChange={(e) => setPostMetadata({ ...postMetadata, company: e.target.value })} className="w-full bg-[#1E293B] border border-[#334155] rounded-xl p-2.5 text-[#F8FAFC] text-sm outline-none placeholder-[#64748B]" placeholder="Company name" /></div>

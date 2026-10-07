@@ -2014,11 +2014,23 @@ export const ShareBottomSheet = memo(
     const [taggedFriends, setTaggedFriends] = useState<number[]>([]);
     const [subModal, setSubModal] = useState<'none' | 'tag' | 'location' | 'feeling'>('none');
     const [searchFriendQuery, setSearchFriendQuery] = useState('');
+    const [groupSearchQuery, setGroupSearchQuery] = useState('');
     const [isPosting, setIsPosting] = useState(false);
     const sheetRef = useRef<HTMLDivElement>(null);
     const backdropRef = useRef<HTMLDivElement>(null);
 
     const canonicalPostUrl = `https://featheredsocial.site/post/${getFeedItemId(post)}`;
+
+    const isGroupPostItem = Boolean(
+      post?.group_id ||
+      post?.groupId ||
+      post?.meta?.group_id ||
+      post?.meta?.groupId ||
+      post?.item_type === 'group_post' ||
+      post?.source === 'group_post' ||
+      post?.category === 'group_post' ||
+      getFeedItemType(post) === 'group_post'
+    );
 
     const isVideo = Boolean(
       post?.video_url ||
@@ -2030,8 +2042,11 @@ export const ShareBottomSheet = memo(
       (Array.isArray(post?.media_urls) && post.media_urls.some((u: string) => typeof u === 'string' && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u)))
     );
 
-    const getShareEndpoint = () => {
+    const getShareEndpoint = (dest?: string) => {
       const itemId = Number(post?.id ?? post?.post_id ?? getFeedItemId(post) ?? 0);
+      if (isGroupPostItem || dest === 'group') {
+        return '/api/groups/posts/share';
+      }
       if (isVideo) {
         return `/api/posts/${itemId}/share`;
       }
@@ -2056,8 +2071,20 @@ export const ShareBottomSheet = memo(
       }
     };
 
-    const getSharePayload = (destination: string) => {
+    const getSharePayload = (destination: string, targetGroupId?: number) => {
       const itemId = Number(post?.id ?? post?.post_id ?? getFeedItemId(post) ?? 0);
+      const srcGroupId = Number(post?.group_id ?? post?.groupId ?? post?.meta?.group_id ?? 0);
+      if (isGroupPostItem || destination === 'group') {
+        return {
+          user_id: currentUser?.id,
+          post_id: itemId,
+          group_id: srcGroupId,
+          target_group_id: targetGroupId,
+          destination: destination,
+          source: isGroupPostItem ? 'group' : 'feed',
+          message: shareMessage,
+        };
+      }
       const itemType = isVideo ? 'post' : getFeedItemType(post);
       const base = {
         user_id: currentUser?.id,
@@ -2082,7 +2109,7 @@ export const ShareBottomSheet = memo(
         case 'event':
           return { ...base, event_id: itemId };
         case 'group_post':
-          return { ...base, post_id: itemId, group_id: post.group_id };
+          return { ...base, post_id: itemId, group_id: srcGroupId, target_group_id: targetGroupId };
         case 'product':
           return { ...base, product_id: itemId };
         case 'reel':
@@ -2132,24 +2159,29 @@ export const ShareBottomSheet = memo(
       }, 200);
     };
 
-    const handleShareAction = async (destination: string, customMessage?: string) => {
+    const handleShareAction = async (destination: string, customMessage?: string, targetGroupId?: number) => {
       if (!currentUser) {
         alert('Please login to share.');
         return;
       }
       setIsPosting(true);
       try {
-        const endpoint = getShareEndpoint();
+        const endpoint = getShareEndpoint(destination);
         const msg = customMessage !== undefined ? customMessage : shareMessage;
-        const itemType = getFeedItemType(post);
-        const payload = itemType === 'story'
+        const itemType = isVideo ? 'post' : getFeedItemType(post);
+        const payload = (destination === 'group' || isGroupPostItem)
+          ? {
+              ...getSharePayload(destination, targetGroupId),
+              message: msg,
+            }
+          : itemType === 'story'
           ? {
               user_id: currentUser.id,
               destination: destination || 'feed',
               message: msg || undefined,
             }
           : {
-              ...getSharePayload(destination),
+              ...getSharePayload(destination, targetGroupId),
               post: post,
               shared_post: post,
               message: msg,
@@ -2242,6 +2274,9 @@ export const ShareBottomSheet = memo(
     }
 
     if (activeFlow === 'groups' && currentUser) {
+      const filteredGroups = groups.filter((g) =>
+        !groupSearchQuery.trim() || String(g.name || '').toLowerCase().includes(groupSearchQuery.toLowerCase())
+      );
       return (
         <div className="fixed inset-0 z-[500] bg-[#050B18] flex flex-col animate-slide-up">
           <div className="flex items-center justify-between p-4 border-b border-[#1E293B]">
@@ -2254,53 +2289,57 @@ export const ShareBottomSheet = memo(
                 Share to Groups & Brands
               </h3>
             </div>
-            <button
-              onClick={() => handleShareAction('group')}
-              className="text-[#1877F2] font-bold text-[19px]"
-            >
-              SHARE
-            </button>
+            {filteredGroups.length > 0 && (
+              <button
+                onClick={() => handleShareAction('group', undefined, filteredGroups[0].id)}
+                className="text-[#1877F2] font-bold text-[19px] cursor-pointer"
+              >
+                SHARE
+              </button>
+            )}
           </div>
           <div className="p-4 border-b border-[#1E293B]">
             <div className="text-[#94A3B8] text-[15px] mb-2">
-              Share with up to 10 groups you're in
+              Share with groups you're in
             </div>
             <input
               type="text"
               placeholder="Search groups..."
+              value={groupSearchQuery}
+              onChange={(e) => setGroupSearchQuery(e.target.value)}
               className="w-full bg-[#1E293B] text-[#F8FAFC] px-4 py-2 rounded-lg text-[15px] outline-none border border-[#1E293B]"
             />
           </div>
           <div className="flex-1 p-4 overflow-y-auto">
-            {groups.length === 0 ? (
+            {filteredGroups.length === 0 ? (
               <div className="text-center py-10">
                 <i className="fas fa-users text-4xl text-[#1E293B] mb-3"></i>
-                <div className="text-[#F8FAFC] text-[17px]">No groups available</div>
+                <div className="text-[#F8FAFC] text-[17px]">No groups found</div>
               </div>
             ) : (
-              groups.slice(0, 5).map((group) => (
+              filteredGroups.map((group) => (
                 <div
                   key={group.id}
                   className="flex items-center justify-between p-3 hover:bg-[#1E293B] rounded-lg mb-2"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <img
-                      src={group.image || avatarFrom(group)}
+                      src={group.image || group.profile_image || avatarFrom(group)}
                       alt=""
-                      className="w-10 h-10 rounded-full"
+                      className="w-10 h-10 rounded-full object-cover shrink-0"
                     />
-                    <div>
-                      <div className="text-[#F8FAFC] font-medium text-[15px]">
+                    <div className="min-w-0">
+                      <div className="text-[#F8FAFC] font-medium text-[15px] truncate">
                         {group.name}
                       </div>
                       <div className="text-[#94A3B8] text-[13px]">
-                        {group.members_count} members
+                        {group.members_count || group.members?.length || 0} members
                       </div>
                     </div>
                   </div>
                   <button
-                    onClick={() => handleShareAction('group')}
-                    className="px-4 py-1 bg-[#1877F2] text-white rounded-lg text-[15px]"
+                    onClick={() => handleShareAction('group', undefined, group.id)}
+                    className="px-4 py-1.5 bg-[#1877F2] hover:bg-[#166fe5] text-white rounded-lg text-[15px] font-semibold transition-colors cursor-pointer shrink-0 ml-2"
                   >
                     Share
                   </button>
@@ -2384,7 +2423,7 @@ export const ShareBottomSheet = memo(
         />
         <div
           ref={sheetRef}
-          className={`fixed bottom-0 left-0 right-0 z-[301] bg-[#0B1120] rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col border-t border-[#1E293B] transition-transform duration-300 ease-out ${
+          className={`fixed bottom-0 left-0 right-0 md:left-1/2 md:-translate-x-1/2 md:bottom-6 md:max-w-md z-[301] bg-[#0B1120] rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[70vh] flex flex-col border border-[#1E293B] transition-transform duration-300 ease-out ${
             isAnimating ? 'translate-y-full' : 'translate-y-0'
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -2463,7 +2502,7 @@ export const ShareBottomSheet = memo(
                     Share to Groups & Brands
                   </div>
                   <div className="text-[#94A3B8] text-[13px] mt-0.5">
-                    Share with up to 10 groups/brands
+                    Share with groups you're in
                   </div>
                 </div>
                 <i className="fas fa-chevron-right text-[#94A3B8] text-[15px]"></i>
@@ -2492,67 +2531,6 @@ export const ShareBottomSheet = memo(
 
               <button
                 onClick={() => {
-                  const text = `Check out this post: ${canonicalPostUrl}`;
-                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                  handleShareAction('whatsapp');
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#1E293B] active:bg-[#334155] transition-all duration-200 group"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#25D36615] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                  <i className="fab fa-whatsapp text-[#25D366] text-lg"></i>
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="text-[#F8FAFC] font-medium text-[17px]">
-                    Send via WhatsApp
-                  </div>
-                  <div className="text-[#94A3B8] text-[13px] mt-0.5">
-                    Share to WhatsApp
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(canonicalPostUrl)}`, '_blank');
-                  handleShareAction('facebook');
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#1E293B] active:bg-[#334155] transition-all duration-200 group"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#1877F215] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                  <i className="fab fa-facebook-f text-[#1877F2] text-lg"></i>
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="text-[#F8FAFC] font-medium text-[17px]">
-                    Share to Facebook
-                  </div>
-                  <div className="text-[#94A3B8] text-[13px] mt-0.5">
-                    Post to Facebook
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(canonicalPostUrl)}&text=${encodeURIComponent(textPreview || 'Check out this post')}`, '_blank');
-                  handleShareAction('twitter');
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#1E293B] active:bg-[#334155] transition-all duration-200 group"
-              >
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                  <i className="fab fa-x-twitter text-white text-lg"></i>
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="text-[#F8FAFC] font-medium text-[17px]">
-                    Share to X (Twitter)
-                  </div>
-                  <div className="text-[#94A3B8] text-[13px] mt-0.5">
-                    Tweet link
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
                   navigator.clipboard.writeText(canonicalPostUrl);
                   setCopiedLink(true);
                   setTimeout(() => setCopiedLink(false), 2000);
@@ -2577,42 +2555,11 @@ export const ShareBottomSheet = memo(
                 </div>
               </button>
             </div>
-
-            {currentUser && users.length > 0 && (
-              <div className="mt-6">
-                <div className="text-[#94A3B8] text-[13px] font-semibold uppercase tracking-wider mb-3 px-1">
-                  Share with recent contacts
-                </div>
-                <div className="flex gap-3">
-                  {users
-                    .filter((u) => u.id !== currentUser.id)
-                    .slice(0, 3)
-                    .map((user) => (
-                      <button
-                        key={user.id}
-                        onClick={() => setActiveFlow('messages')}
-                        className="flex flex-col items-center gap-2"
-                      >
-                        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1877F2] p-0.5">
-                          <img
-                            src={avatarFrom(user)}
-                            alt={user.name}
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        </div>
-                        <span className="text-[#F8FAFC] text-[13px] font-medium max-w-[60px] truncate">
-                          {user.name.split(' ')[0]}
-                        </span>
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
           </div>
           <div className="p-4 pt-3 border-t border-[#1E293B]">
             <button
               onClick={closeSheet}
-              className="w-full py-3 bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] font-semibold rounded-xl transition-colors text-[17px]"
+              className="w-full py-3 bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] font-semibold rounded-xl transition-colors text-[17px] cursor-pointer"
             >
               Cancel
             </button>
@@ -4801,6 +4748,41 @@ const GroupPostHeader = memo(
     const groupName = rawGroupName || matchedGroup?.name || 'Group';
     const isGroupVerified = Boolean(group?.is_verified || matchedGroup?.is_verified || post?.is_group_verified);
 
+    const isSharedGroupPost = Boolean(
+      post?.meta?.is_shared ||
+      post?.is_shared ||
+      post?.shared_by_name ||
+      post?.shared_user_name ||
+      (post?.feed_key && String(post.feed_key).startsWith('group_post_share:'))
+    );
+
+    const sharedUserName = safeStr(
+      post?.meta?.shared_by_name ||
+      post?.shared_by_name ||
+      post?.shared_user_name ||
+      post?.name ||
+      author?.name ||
+      'User'
+    );
+    const sharedUserId = Number(
+      post?.meta?.shared_by_user_id ||
+      post?.shared_by_user_id ||
+      post?.user_id ||
+      author?.id ||
+      0
+    );
+    const sharedUserAvatar = safeStr(
+      post?.meta?.shared_by_avatar ||
+      post?.shared_by_avatar ||
+      author?.profile_image_url ||
+      author?.avatar ||
+      post?.profile_image_url ||
+      ''
+    );
+    const sharedUserVerified = Boolean(
+      post?.meta?.shared_by_verified ?? author?.is_verified ?? false
+    );
+
     const userName = safeStr(author?.name || post?.name || post?.username);
     const userId = Number(author?.id || post?.user_id || 0);
     const groupImg =
@@ -4811,6 +4793,94 @@ const GroupPostHeader = memo(
       safeStr(author?.profile_image_url || author?.avatar || post?.profile_image_url) ||
       '';
     const timeAgo = formatRelativeTime(post?.created_at);
+
+    if (isSharedGroupPost) {
+      return (
+        <div className="flex items-start justify-between px-3 pt-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="relative shrink-0">
+              <button
+                className="w-10 h-10 rounded-full bg-[#1E293B] overflow-hidden flex items-center justify-center border border-[#334155] cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (sharedUserId && onOpenProfile) onOpenProfile(sharedUserId);
+                }}
+                title={sharedUserName}
+              >
+                {sharedUserAvatar ? (
+                  <img src={sharedUserAvatar} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  <i className="fas fa-user text-[#94A3B8]" />
+                )}
+              </button>
+              <button
+                className="absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-[#1E293B] overflow-hidden border-2 border-[#0B1120] flex items-center justify-center cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onOpenGroup) onOpenGroup(groupId || 0);
+                }}
+                title={groupName}
+              >
+                {groupImg ? (
+                  <img src={groupImg} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  <i className="fas fa-users text-[10px] text-[#94A3B8]" />
+                )}
+              </button>
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <button
+                  className="text-left font-bold text-[20px] sm:text-[21px] leading-tight text-[#F8FAFC] truncate hover:underline cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (sharedUserId && onOpenProfile) onOpenProfile(sharedUserId);
+                  }}
+                >
+                  {sharedUserName}
+                </button>
+                {sharedUserVerified && (
+                  <VerifiedBadge size={20} className="shrink-0" />
+                )}
+                <span className="text-[#94A3B8] font-normal text-[15px] sm:text-[16px]">
+                  shared a post from
+                </span>
+                <button
+                  className="font-bold text-[#38BDF8] text-[20px] sm:text-[21px] truncate hover:underline cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onOpenGroup) onOpenGroup(groupId || 0);
+                  }}
+                >
+                  {groupName}
+                </button>
+                {isGroupVerified && (
+                  <VerifiedBadge size={20} className="shrink-0" />
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-[14px] text-[#94A3B8] min-w-0 mt-0.5">
+                <span>{timeAgo}</span>
+                <span>·</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onOpenGroup) onOpenGroup(groupId || 0);
+                  }}
+                  className="hover:text-white transition-colors flex items-center gap-1"
+                  title={`Open ${groupName}`}
+                >
+                  <i className="fas fa-users text-[12px]" />
+                  <span className="text-xs text-[#94A3B8]">Group</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="flex items-start justify-between px-3 pt-3">

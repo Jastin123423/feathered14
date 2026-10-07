@@ -208,12 +208,36 @@ const getGroupCategory = async (env: any, group_id: number) => {
   return { ok: true as const, category: normalizeCategory((g as any).category), group: g };
 };
 
+let _groupPostSchemaEnsured = false;
+async function ensureGroupPostSchema(db: D1Database) {
+  if (_groupPostSchemaEnsured) return;
+  const groupPostCols = [
+    "ALTER TABLE group_posts ADD COLUMN shared_post_id INTEGER",
+    "ALTER TABLE group_posts ADD COLUMN shared_from TEXT",
+    "ALTER TABLE group_posts ADD COLUMN shared_group_id INTEGER",
+    "ALTER TABLE group_posts ADD COLUMN shared_group_name TEXT",
+    "ALTER TABLE group_posts ADD COLUMN shared_by_user_id INTEGER",
+    "ALTER TABLE group_posts ADD COLUMN shared_user_name TEXT",
+    "ALTER TABLE group_posts ADD COLUMN original_owner_name TEXT",
+    "ALTER TABLE group_posts ADD COLUMN original_owner_id INTEGER",
+    "ALTER TABLE group_posts ADD COLUMN original_owner_avatar TEXT",
+    "ALTER TABLE group_posts ADD COLUMN original_post_content TEXT",
+  ];
+  for (const q of groupPostCols) {
+    try {
+      await db.prepare(q).run();
+    } catch (_) {}
+  }
+  _groupPostSchemaEnsured = true;
+}
+
 /** ============================================================
  * CREATE: POST /api/group-posts
  * ============================================================ */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
     if (!env?.DB) return server("DB binding missing (DB)");
+    await ensureGroupPostSchema(env.DB);
 
     const body = await request.json().catch(() => ({} as any));
 
@@ -408,6 +432,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     if (!env?.DB) return server("DB binding missing (DB)");
+    await ensureGroupPostSchema(env.DB);
 
     const url = new URL(request.url);
     const group_id = toInt(url.searchParams.get("group_id"), 0);
