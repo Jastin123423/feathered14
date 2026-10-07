@@ -1041,16 +1041,105 @@ function apiDevPlugin(): Plugin {
           return req.on('end', () => {
             try {
               const parsed = JSON.parse(body || '{}');
+              const postId = Number(parsed.post_id || parsed.id || 0);
+              const targetGid = Number(parsed.target_group_id || parsed.targetGroupId || parsed.group_id || 0);
+              const dest = String(parsed.destination || 'feed').toLowerCase();
+              const origPost = parsed.post || parsed.shared_post || devPosts.find(p => Number(p.id) === postId) || null;
+              const nextShares = (Number(origPost?.shares ?? origPost?.shares_count ?? 0) || 0) + 1;
+              if (origPost) {
+                origPost.shares = nextShares;
+                origPost.shares_count = nextShares;
+              }
+
+              const shareId = Date.now();
+              const shareRecord = {
+                id: shareId,
+                post_id: postId,
+                user_id: parsed.user_id || 1,
+                destination: dest,
+                message: parsed.message || '',
+                created_at: new Date().toISOString(),
+              };
+              devShares.unshift(shareRecord);
+
+              if (dest === 'group') {
+                const groupPost = {
+                  id: shareId,
+                  group_id: targetGid,
+                  user_id: parsed.user_id || 1,
+                  content: parsed.message || origPost?.content || origPost?.caption || '',
+                  media_url: origPost?.media_url || origPost?.video_url || null,
+                  media_urls: origPost?.media_urls || [],
+                  media_types: origPost?.media_types || [],
+                  shared_post_id: postId,
+                  shared_from: parsed.source || (origPost?.group_id ? 'group' : 'feed'),
+                  shared_group_id: origPost?.group_id || null,
+                  shared_group_name: origPost?.group_name || null,
+                  shared_by_user_id: parsed.user_id || 1,
+                  shared_user_name: 'You',
+                  original_owner_name: origPost?.author?.name || origPost?.user?.name || 'User',
+                  original_owner_id: origPost?.user_id || origPost?.author?.id || null,
+                  original_owner_avatar: origPost?.author?.profile_image_url || origPost?.author?.avatar || null,
+                  original_post_content: origPost?.content || origPost?.caption || '',
+                  visibility: 'public',
+                  created_at: new Date().toISOString(),
+                  shares: 0,
+                  shares_count: 0,
+                  reactions_count: 0,
+                  comments_count: 0,
+                  author: { id: parsed.user_id || 1, name: 'You' },
+                };
+                res.statusCode = 200;
+                return res.end(JSON.stringify({
+                  success: true,
+                  share_id: shareId,
+                  shares_count: nextShares,
+                  shares: nextShares,
+                  destination: 'group',
+                  target_group_id: targetGid,
+                  group_post: groupPost,
+                  post: groupPost,
+                }));
+              }
+
+              // dest === 'feed'
+              const newFeedSharedPost = {
+                id: shareId,
+                post_id: shareId,
+                user_id: parsed.user_id || 1,
+                content: parsed.message || '',
+                shared_post_id: postId,
+                shared_post: origPost,
+                is_group_post: true,
+                group_id: Number(parsed.group_id || origPost?.group_id || 0),
+                group_name: origPost?.group_name || 'Group',
+                source: 'group_post',
+                item_type: 'group_post',
+                feed_key: `group_post_share:${shareId}`,
+                created_at: new Date().toISOString(),
+                shares: 0,
+                shares_count: 0,
+                likes_count: 0,
+                reactions_count: 0,
+                comments_count: 0,
+                author: { id: parsed.user_id || 1, name: 'You' },
+              };
+              devPosts.unshift(newFeedSharedPost);
+
               res.statusCode = 200;
               return res.end(JSON.stringify({
                 success: true,
                 message: 'Shared successfully',
-                share_count: 1,
-                destination: parsed.destination || 'feed'
+                share_id: shareId,
+                share_count: nextShares,
+                shares: nextShares,
+                shares_count: nextShares,
+                destination: 'feed',
+                post: newFeedSharedPost,
               }));
             } catch {
               res.statusCode = 200;
-              return res.end(JSON.stringify({ success: true }));
+              return res.end(JSON.stringify({ success: true, destination: 'feed' }));
             }
           });
         }

@@ -11565,6 +11565,11 @@ const handleShareComplete = useCallback(
           newSharedItem,
           ...safeArray(prev).filter((p: any) => Number(p.id) !== Number(newSharedItem.id)),
         ]);
+      } else if (destination === 'group') {
+        const targetGid = Number(data?.target_group_id || data?.data?.target_group_id || data?.post?.group_id || 0);
+        if (targetGid && typeof fetchGroupPosts === 'function') {
+          fetchGroupPosts(targetGid).catch(() => {});
+        }
       }
 
       // If ShareBottomSheet did not already execute the network call, record it
@@ -12205,7 +12210,8 @@ return (
   onProfileClick={openProfile}
   onReact={(post, type) => reactToFeedItem(post, type)}
   onShare={(id, newShareCount, data, sourcePost) => {
-    handleShareComplete('feed', data || { success: true, shares: newShareCount }, sourcePost);
+    const dest = data?.destination || 'feed';
+    handleShareComplete(dest, data || { success: true, shares: newShareCount }, sourcePost);
   }}
   onOpenComments={handleOpenComments}
   onViewImage={setFullScreenImage}

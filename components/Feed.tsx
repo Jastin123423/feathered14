@@ -2016,8 +2016,44 @@ export const ShareBottomSheet = memo(
     const [searchFriendQuery, setSearchFriendQuery] = useState('');
     const [groupSearchQuery, setGroupSearchQuery] = useState('');
     const [isPosting, setIsPosting] = useState(false);
+    const [availableGroups, setAvailableGroups] = useState<Group[]>(groups || []);
     const sheetRef = useRef<HTMLDivElement>(null);
     const backdropRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (Array.isArray(groups) && groups.length > 0) {
+        setAvailableGroups(groups);
+      }
+    }, [groups]);
+
+    useEffect(() => {
+      if (activeFlow === 'groups' && currentUser) {
+        if (!availableGroups || availableGroups.length === 0) {
+          apiFetch(`/api/groups?viewerId=${currentUser.id}`)
+            .then((res: any) => {
+              const list = Array.isArray(res) ? res : Array.isArray(res?.groups) ? res.groups : Array.isArray(res?.results) ? res.results : [];
+              if (list.length > 0) {
+                setAvailableGroups(list);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    }, [activeFlow, currentUser, availableGroups.length]);
+
+    const isUserInGroup = useCallback((g: any) => {
+      const meId = Number(currentUser?.id);
+      if (!meId) return false;
+      if (Number(g.admin_id ?? g.adminId) === meId) return true;
+      if (g.is_member === true || g.isMember === true || g.is_member === 1 || g.is_member === '1' || g.is_member === 'true') return true;
+      if (Array.isArray(g.members) && g.members.some((m: any) => Number(m?.user_id ?? m?.id ?? m) === meId)) return true;
+      return false;
+    }, [currentUser]);
+
+    const userGroups = useMemo(() => {
+      const my = (availableGroups || []).filter(isUserInGroup);
+      return my.length > 0 ? my : (availableGroups || []);
+    }, [availableGroups, isUserInGroup]);
 
     const canonicalPostUrl = `https://featheredsocial.site/post/${getFeedItemId(post)}`;
 
@@ -2205,6 +2241,8 @@ export const ShareBottomSheet = memo(
           );
           onShareComplete(destination, {
             success: true,
+            destination,
+            target_group_id: targetGroupId,
             data: response,
             shares: nextShares,
             message: msg,
@@ -2274,7 +2312,7 @@ export const ShareBottomSheet = memo(
     }
 
     if (activeFlow === 'groups' && currentUser) {
-      const filteredGroups = groups.filter((g) =>
+      const filteredGroups = userGroups.filter((g) =>
         !groupSearchQuery.trim() || String(g.name || '').toLowerCase().includes(groupSearchQuery.toLowerCase())
       );
       return (
@@ -2534,7 +2572,6 @@ export const ShareBottomSheet = memo(
                   navigator.clipboard.writeText(canonicalPostUrl);
                   setCopiedLink(true);
                   setTimeout(() => setCopiedLink(false), 2000);
-                  handleShareAction('link');
                 }}
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#1E293B] active:bg-[#334155] transition-all duration-200 group"
               >
@@ -7620,7 +7657,7 @@ export const Post = memo(
       const nextShares = safeNumber(data?.shares ?? data?.share_count, NaN);
       const finalShares = Number.isFinite(nextShares) ? nextShares : shareCount + 1;
       setShareCount(finalShares);
-      onShare(postId, finalShares, data, p);
+      onShare(postId, finalShares, { ...(data || {}), destination }, p);
       setShowShareSheet(false);
     };
 

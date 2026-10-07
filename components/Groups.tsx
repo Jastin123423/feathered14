@@ -1392,7 +1392,7 @@ const RecruitmentPost: React.FC<any> = (props) => {
         </div>
         <GroupCommentPreview post={post} groupId={post.group_id || props.group?.id} currentUser={currentUser} users={users} onProfileClick={onProfileClick} onOpenComments={handleOpenComments} />
       </div>
-      <ShareBottomSheet isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} post={post} currentUser={currentUser} users={users} onShareComplete={handleShareComplete} />
+      <ShareBottomSheet isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} post={post} currentUser={currentUser} users={users} groups={props.groups || []} onShareComplete={handleShareComplete} />
       <GalleryViewer isOpen={galleryOpen} urls={galleryUrls} startIndex={galleryIndex} onClose={() => setGalleryOpen(false)} postId={post.id} currentUser={currentUser} reactionCount={localReactionCount} commentCount={commentCount} shareCount={shareCount} myReaction={localMyReaction} onReact={handleLikeClick} onOpenComments={handleOpenComments} onShare={() => setShowShareSheet(true)} onOpenReactions={() => setShowReactionsSheet(true)} />
     </>
   );
@@ -1551,14 +1551,14 @@ const BuySellPost: React.FC<any> = (props) => {
         </div>
         <GroupCommentPreview post={post} groupId={post.group_id || props.group?.id} currentUser={currentUser} users={users} onProfileClick={onProfileClick} onOpenComments={handleOpenComments} />
       </div>
-      <ShareBottomSheet isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} post={post} currentUser={currentUser} users={users} onShareComplete={handleShareComplete} />
+      <ShareBottomSheet isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} post={post} currentUser={currentUser} users={users} groups={props.groups || []} onShareComplete={handleShareComplete} />
       <GalleryViewer isOpen={galleryOpen} urls={galleryUrls} startIndex={galleryIndex} onClose={() => setGalleryOpen(false)} postId={post.id} currentUser={currentUser} reactionCount={localReactionCount} commentCount={commentCount} shareCount={shareCount} myReaction={localMyReaction} onReact={handleLikeClick} onOpenComments={handleOpenComments} onShare={() => setShowShareSheet(true)} onOpenReactions={() => setShowReactionsSheet(true)} />
     </>
   );
 };
 
 const GeneralGroupPost: React.FC<any> = ({
-  post, author, currentUser, users = [], isGroupAdmin = false, isPlatformAdmin = false, onProfileClick, onLikePost, onOpenComments, onSharePost, onEditPost, onDeletePost, onReportPost, onViewImage, onVideoClick, onHashtagClick, onFollow, checkIsFollowing, onComment, onCommentAdded,
+  post, author, currentUser, users = [], groups = [], isGroupAdmin = false, isPlatformAdmin = false, onProfileClick, onLikePost, onOpenComments, onSharePost, onEditPost, onDeletePost, onReportPost, onViewImage, onVideoClick, onHashtagClick, onFollow, checkIsFollowing, onComment, onCommentAdded,
 }) => {
   const p: any = post as any;
   const a: any = author as any;
@@ -1727,7 +1727,7 @@ const GeneralGroupPost: React.FC<any> = ({
         </div>
         <GroupCommentPreview post={p} groupId={p.group_id} currentUser={currentUser} users={users} onProfileClick={onProfileClick} onOpenComments={handleOpenComments} />
       </div>
-      <ShareBottomSheet isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} post={p} currentUser={currentUser} users={users} onShareComplete={handleShareComplete} />
+      <ShareBottomSheet isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} post={p} currentUser={currentUser} users={users} groups={groups} onShareComplete={handleShareComplete} />
       <GalleryViewer isOpen={galleryOpen} urls={galleryUrls} startIndex={galleryIndex} onClose={() => setGalleryOpen(false)} postId={postId} currentUser={currentUser} reactionCount={finalReactionCount} commentCount={commentCount} shareCount={shareCount} myReaction={finalMyReaction} onReact={handleLikeClick} onOpenComments={handleOpenComments} onShare={() => setShowShareSheet(true)} onOpenReactions={() => setShowReactionsSheet(true)} />
     </>
   );
@@ -4291,6 +4291,7 @@ return (
                         author={author}
                         currentUser={currentUser}
                         users={users}
+                        groups={groups}
                         groupCategory={activeGroup.category}
                         isGroupAdmin={isGroupAdmin}
                         isPlatformAdmin={isAdmin}
