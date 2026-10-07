@@ -79,26 +79,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     if (!post?.group_id) return bad("Group post not found", 404);
 
-    // Check membership / ownership / accessibility
+    // Must be a member of that group
     const mem = await env.DB.prepare(
       `SELECT 1 FROM group_members WHERE group_id=? AND user_id=? LIMIT 1`
     )
       .bind(Number(post.group_id), user_id)
       .first();
 
-    const grp = await env.DB.prepare(
-      `SELECT id, privacy, admin_id FROM groups WHERE id=? LIMIT 1`
-    )
-      .bind(Number(post.group_id))
-      .first();
-
-    const isOwner = Number(grp?.admin_id) === user_id;
-    const isMember = Boolean(mem || isOwner);
-
-    // If the group is explicitly private and user is neither member nor owner, block
-    if (!isMember && grp?.privacy === "private") {
-      return bad("User is not a member of this private group", 403);
-    }
+    if (!mem) return bad("User is not a member of this group", 403);
 
     const postOwnerId = toInt((post as any)?.user_id, 0);
 
