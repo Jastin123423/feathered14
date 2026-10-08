@@ -1,4 +1,4 @@
-//
+// functions/api/messages/conversations.ts
 import type { PagesFunction } from "@cloudflare/workers-types";
 
 type Env = { DB: D1Database };
@@ -50,6 +50,22 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const lastExpr = hasLast ? "c.last_message_at" : "NULL";
     const orderExpr = hasLast ? "c.last_message_at DESC, c.id DESC" : "c.id DESC";
 
+    // ✅ Detect which name columns exist on users so we can build a safe COALESCE
+    const hasName = await hasColumn(env.DB, "users", "name");
+    const hasUsername = await hasColumn(env.DB, "users", "username");
+    const hasDisplayName = await hasColumn(env.DB, "users", "display_name");
+
+    const nameParts: string[] = [];
+    if (hasName) nameParts.push(`NULLIF(TRIM(u.name), '')`);
+    if (hasUsername) nameParts.push(`NULLIF(TRIM(u.username), '')`);
+    if (hasDisplayName) nameParts.push(`NULLIF(TRIM(u.display_name), '')`);
+    nameParts.push(`'User'`); // ultimate fallback
+
+    const otherNameExpr = `COALESCE(${nameParts.join(", ")})`;
+
+    // ✅ Also expose the raw username for the frontend (optional but harmless)
+    const otherUsernameExpr = hasUsername ? `u.username` : `NULL`;
+
     const rows = await env.DB.prepare(
       `
       SELECT
@@ -57,7 +73,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         ${lastExpr} AS last_message_at,
 
         u.id AS other_user_id,
-        u.name AS other_name,
+        ${otherNameExpr} AS other_name,
+        ${otherUsernameExpr} AS other_username,
         u.profile_image_url AS other_profile_image_url,
 
         (
