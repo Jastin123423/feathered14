@@ -1,10 +1,11 @@
+// functions/api/messages/conversations/[id].ts
 import type { PagesFunction } from "@cloudflare/workers-types";
 
 type Env = { DB: D1Database };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Methods": "GET,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, x-user-id",
 };
 
@@ -26,94 +27,234 @@ const getAuthUserId = async (request: Request): Promise<number> => {
   return id > 0 ? id : 0;
 };
 
+/* ============================================================
+   ✅ Attachment normalization (same idea as send.ts)
+============================================================ */
+
+const urlExt = (url: string) => {
+  const u = (url || "").split("?")[0].toLowerCase();
+  const dot = u.lastIndexOf(".");
+  if (dot === -1) return "";
+  return u.slice(dot + 1);
+};
+
+const mimeFromExt = (ext: string) => {
+  const e = (ext || "").toLowerCase();
+  if (e === "mp3") return "audio/mpeg";
+  if (e === "wav") return "audio/wav";
+  if (e === "ogg" || e === "oga") return "audio/ogg";
+  if (e === "aac") return "audio/aac";
+  if (e === "m4a") return "audio/mp4";
+  if (e === "webm") return "audio/webm";
+  if (e === "mp4") return "video/mp4";
+  if (e === "jpg" || e === "jpeg") return "image/jpeg";
+  if (e === "png") return "image/png";
+  if (e === "webp") return "image/webp";
+  if (e === "gif") return "image/gif";
+  if (e === "pdf") return "application/pdf";
+  return "";
+};
+
+const inferFileType = (mime: string, url: string, provided: string) => {
+  const m = (mime || "").toLowerCase();
+  const p = (provided || "").toLowerCase();
+  const ext = urlExt(url);
+
+  if (p === "audio" || p === "voice" || p === "voicenote") return "audio";
+
+  if (
+    m.startsWith("audio/") ||
+    m.includes("opus") ||
+    ["webm", "mp3", "wav", "ogg", "aac", "m4a"].includes(ext)
+  ) {
+    return "audio";
+  }
+
+  if (m.startsWith("image/") || ["jpg", "jpeg", "png", "webp"].includes(ext)) return "image";
+  if (m.includes("gif") || ext === "gif") return "gif";
+  if (m.startsWith("video/") || ["mp4", "mov"].includes(ext)) return "video";
+
+  if (m === "application/pdf" || ext === "pdf") return "document";
+  if (m.includes("officedocument") || m.includes("msword")) return "document";
+
+  return p || "other";
+};
+
+const normalizeOneAttachment = (a: any) => {
+  const url = safeStr(a?.url ?? a?.attachment_url ?? a?.attachmentUrl ?? "").trim();
+  if (!url) return null;
+
+  let mime_type = safeStr(a?.mime_type ?? a?.mimeType ?? a?.mime ?? "").trim();
+  const providedType = safeStr(a?.file_type ?? a?.fileType ?? a?.type ?? a?.attachment_type ?? "").trim();
+
+  if (!mime_type) {
+    const guessed = mimeFromExt(urlExt(url));
+    if (guessed) mime_type = guessed;
+  }
+
+  const file_type = inferFileType(mime_type, url, providedType);
+
+  const filename = safeStr(a?.filename ?? a?.name ?? "").trim();
+  const size_bytes =
+    a?.size_bytes != null ? safeNum(a.size_bytes, 0) : a?.size != null ? safeNum(a.size, 0) : null;
+
+  return {
+    id: a?.id != null ? safeNum(a.id, 0) : undefined,
+    message_id: a?.message_id != null ? safeNum(a.message_id, 0) : undefined,
+    url,
+    mime_type: mime_type || null,
+    file_type: file_type || "other",
+    filename: filename || null,
+    size_bytes,
+    width: a?.width != null ? safeNum(a.width, 0) : null,
+    height: a?.height != null ? safeNum(a.height, 0) : null,
+    duration_ms: a?.duration_ms != null ? safeNum(a.duration_ms, 0) : null,
+    page_count: a?.page_count != null ? safeNum(a.page_count, 0) : null,
+    metadata:
+      a?.metadata != null
+        ? typeof a.metadata === "string"
+          ? a.metadata
+          : JSON.stringify(a.metadata)
+        : null,
+    created_at: a?.created_at ?? undefined,
+  };
+};
+
 export const onRequestOptions: PagesFunction = async () =>
   new Response(null, { status: 204, headers: cors });
 
-/**
- * PUT /api/messages/:id
- * Body: { text_content: "..." }
- * Only sender can edit.
- */
-export const onRequestPut: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
     if (!env.DB) return json({ success: false, error: "DB binding missing (DB)" }, 500);
 
     const userId = await getAuthUserId(request);
     if (!userId) return json({ success: false, error: "Unauthorized" }, 401);
 
-    const messageId = safeNum((params as any)?.id, 0);
-    if (!messageId) return json({ success: false, error: "Invalid message id" }, 400);
+    const conversationId = safeNum((params as any)?.id, 0);
+    if (!conversationId) return json({ success: false, error: "Invalid conversation id" }, 400);
 
-    const body = await request.json().catch(() => ({} as any));
-    const newText = safeStr(body.text_content ?? "").trim();
-    if (!newText) return json({ success: false, error: "Missing text_content" }, 400);
-
-    const msg = await env.DB
-      .prepare(`SELECT id, sender_id FROM messages WHERE id = ? LIMIT 1`)
-      .bind(messageId)
+    // must be participant
+    const chk = await env.DB
+      .prepare(`SELECT 1 FROM conversation_participants WHERE conversation_id = ? AND user_id = ? LIMIT 1`)
+      .bind(conversationId, userId)
       .first();
 
-    if (!msg) return json({ success: false, error: "Message not found" }, 404);
-    if (safeNum((msg as any)?.sender_id) !== userId) return json({ success: false, error: "Forbidden" }, 403);
+    if (!chk) return json({ success: false, error: "Forbidden" }, 403);
 
-    // edited_at might not exist; try and fallback
+    // fetch messages, excluding ones "deleted for me"
+    // ✅ NEW: also embed parent message as JSON so replies render even if the
+    //    parent isn't in the current slice / was deleted for me.
+    const rows = await env.DB
+      .prepare(
+        `
+        SELECT
+          m.id,
+          m.conversation_id,
+          m.sender_id,
+          m.parent_message_id,
+          m.text_content,
+          m.attachment_url,
+          m.attachment_type,
+          m.attachment_metadata,
+          m.created_at,
+          m.edited_at,
+
+          (
+            SELECT json_object(
+              'id', p.id,
+              'text_content', p.text_content,
+              'sender_id', p.sender_id,
+              'attachment_url', p.attachment_url,
+              'attachment_type', p.attachment_type
+            )
+            FROM messages p
+            WHERE p.id = m.parent_message_id
+          ) AS parent_json
+
+        FROM messages m
+        LEFT JOIN message_deletes md
+          ON md.message_id = m.id AND md.user_id = ?
+        WHERE m.conversation_id = ?
+          AND md.message_id IS NULL
+        ORDER BY m.created_at ASC, m.id ASC
+        `
+      )
+      .bind(userId, conversationId)
+      .all();
+
+    const messages = (rows.results || []) as any[];
+
+    // ✅ Parse parent_json into parent object
+    for (const m of messages) {
+      if (m.parent_json) {
+        try {
+          m.parent = typeof m.parent_json === "string" ? JSON.parse(m.parent_json) : m.parent_json;
+        } catch {
+          m.parent = null;
+        }
+      } else {
+        m.parent = null;
+      }
+      delete m.parent_json;
+    }
+
+    if (!messages.length) return json([]);
+
+    // Pull attachments for all messages in one query
+    const ids = messages.map((m) => safeNum(m.id, 0)).filter((n) => n > 0);
+    if (!ids.length) return json(messages);
+
+    const placeholders = ids.map(() => "?").join(",");
+
+    let attResults: any[] = [];
     try {
-      await env.DB
-        .prepare(`UPDATE messages SET text_content = ?, edited_at = CURRENT_TIMESTAMP WHERE id = ?`)
-        .bind(newText, messageId)
-        .run();
+      const aRes = await env.DB
+        .prepare(
+          `SELECT
+             id, message_id, url, mime_type, file_type, filename, size_bytes,
+             width, height, duration_ms, page_count, metadata, created_at
+           FROM message_attachments
+           WHERE message_id IN (${placeholders})
+           ORDER BY id ASC`
+        )
+        .bind(...ids)
+        .all();
+      attResults = (aRes.results || []) as any[];
     } catch {
-      await env.DB.prepare(`UPDATE messages SET text_content = ? WHERE id = ?`).bind(newText, messageId).run();
+      attResults = [];
     }
 
-    const updated = await env.DB.prepare(`SELECT * FROM messages WHERE id = ? LIMIT 1`).bind(messageId).first();
-    return json({ success: true, message: updated });
-  } catch (e: any) {
-    return json({ success: false, error: e?.message || "Server error" }, 500);
-  }
-};
-
-/**
- * DELETE /api/messages/:id
- * Body: { delete_for_everyone: boolean }
- * - delete_for_everyone=true : only sender can hard-delete from messages table
- * - else : delete for me (insert into message_deletes)
- */
-export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
-  try {
-    if (!env.DB) return json({ success: false, error: "DB binding missing (DB)" }, 500);
-
-    const userId = await getAuthUserId(request);
-    if (!userId) return json({ success: false, error: "Unauthorized" }, 401);
-
-    const messageId = safeNum((params as any)?.id, 0);
-    if (!messageId) return json({ success: false, error: "Invalid message id" }, 400);
-
-    const body = await request.json().catch(() => ({} as any));
-    const delEveryone = !!body.delete_for_everyone;
-
-    const msg = await env.DB
-      .prepare(`SELECT id, sender_id FROM messages WHERE id = ? LIMIT 1`)
-      .bind(messageId)
-      .first();
-
-    if (!msg) return json({ success: false, error: "Message not found" }, 404);
-
-    const senderId = safeNum((msg as any)?.sender_id, 0);
-
-    if (delEveryone) {
-      if (senderId !== userId) return json({ success: false, error: "Forbidden" }, 403);
-      await env.DB.prepare(`DELETE FROM messages WHERE id = ?`).bind(messageId).run();
-      return json({ success: true, deleted: "everyone" });
+    const byMsg: Record<string, any[]> = {};
+    for (const a of attResults) {
+      const norm = normalizeOneAttachment(a);
+      if (!norm) continue;
+      const mid = String(norm.message_id || a.message_id);
+      (byMsg[mid] ||= []).push(norm);
     }
 
-    // delete for me
-    await env.DB
-      .prepare(`INSERT OR IGNORE INTO message_deletes (message_id, user_id) VALUES (?, ?)`)
-      .bind(messageId, userId)
-      .run();
+    // Attach normalized attachments (and legacy fallback if empty)
+    for (const m of messages) {
+      const mid = String(m.id);
+      const list = byMsg[mid] || [];
 
-    return json({ success: true, deleted: "me" });
+      // ✅ legacy fallback -> convert to attachment if attachments table empty
+      if (!list.length) {
+        const legacyUrl = safeStr(m.attachment_url).trim();
+        if (legacyUrl) {
+          const legacyAtt = normalizeOneAttachment({
+            url: legacyUrl,
+            file_type: safeStr(m.attachment_type).trim(),
+            metadata: m.attachment_metadata ?? null,
+            message_id: m.id,
+          });
+          if (legacyAtt) list.push(legacyAtt);
+        }
+      }
+
+      m.attachments = list;
+    }
+
+    return json(messages);
   } catch (e: any) {
     return json({ success: false, error: e?.message || "Server error" }, 500);
   }
