@@ -1,4 +1,4 @@
-// functions/api/users/login.ts-
+// functions/api/users/login.ts
 import type { PagesFunction } from "@cloudflare/workers-types";
 import { signJWT } from "./_jwt";
 
@@ -39,7 +39,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .toLowerCase()
       .replace(/\s+/g, "");
 
-    const password = String(body.password ?? "");
+    // Trim password so hashing matches signup.ts exactly.
+    const password = String(body.password ?? "").trim();
 
     if (!email || !password) return json({ error: "email and password are required" }, 400);
 
@@ -52,14 +53,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     if (!user) return json({ error: "Invalid email or password" }, 401);
 
-    // Optional: suspension check (keep if your table has these columns)
+    // Suspension check — schema column is `suspension_reason` (not `suspended_reason`)
     const until = (user as any)?.suspended_until ? Date.parse((user as any).suspended_until) : 0;
     if (until && Number.isFinite(until) && until > Date.now()) {
       return json(
         {
           error: "Account suspended",
           suspended_until: (user as any).suspended_until,
-          suspended_reason: (user as any).suspended_reason || null,
+          suspension_reason: (user as any).suspension_reason || null,
         },
         403
       );
