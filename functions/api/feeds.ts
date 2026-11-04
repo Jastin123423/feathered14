@@ -385,6 +385,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         p.colours AS colours,
         p.colours AS background,
         p.colours AS background_style,
+        p.background_color AS background_color,
+        p.background_image_url AS background_image_url,
 
         CASE
           WHEN p.media_url LIKE 'data:%' THEN NULL
@@ -575,6 +577,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         p.colours AS colours,
         p.colours AS background,
         p.colours AS background_style,
+        p.background_color AS background_color,
+        p.background_image_url AS background_image_url,
 
         CASE
           WHEN p.media_url LIKE 'data:%' THEN NULL
@@ -692,6 +696,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
               WHEN length(p.media_meta) > 100000 THEN NULL
               ELSE p.media_meta
             END,
+
+          'colours', p.colours,
+          'background', p.colours,
+          'background_style', p.colours,
+          'background_color', p.background_color,
+          'background_image_url', p.background_image_url,
 
           'author', json_object(
             'id', p.user_id,
@@ -2375,6 +2385,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         p.colours AS colours,
         p.colours AS background,
         p.colours AS background_style,
+        p.background_color AS background_color,
+        p.background_image_url AS background_image_url,
 
         CASE
           WHEN COALESCE(a.media_url, p.media_url) LIKE 'data:%' THEN NULL
@@ -2865,12 +2877,21 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         return null;
       })();
 
-      const resolvedColours =
+      const rawColours =
         (typeof item?.colours === "string" && item.colours.trim()) ||
         (typeof item?.background === "string" && item.background.trim()) ||
         (typeof item?.background_style === "string" && item.background_style.trim()) ||
         bgFromMeta ||
         null;
+
+      const rawBgColor =
+        (typeof item?.background_color === "string" && item.background_color.trim()) || null;
+
+      const rawBgImage =
+        (typeof item?.background_image_url === "string" && item.background_image_url.trim()) || null;
+
+      // Precedence: colours → background_color → null
+      const resolvedColours = rawColours || rawBgColor || null;
 
       const normMedia = normalizeMedia(item);
       const hasRealMedia = Boolean(
@@ -2887,6 +2908,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         colours: resolvedColours,
         background: resolvedColours,
         background_style: resolvedColours,
+        background_color: rawBgColor,
+        background_image_url: rawBgImage,
         description: item?.description ?? item?.content ?? "",
         is_verified: isVerified,
         verified: isVerified,
@@ -3017,12 +3040,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
             return null;
           })();
 
-          const spResolvedColours =
+          const spRawColours =
             (typeof sp?.colours === "string" && sp.colours.trim()) ||
             (typeof sp?.background === "string" && sp.background.trim()) ||
             (typeof sp?.background_style === "string" && sp.background_style.trim()) ||
             spBgFromMeta ||
             null;
+
+          const spRawBgColor =
+            (typeof sp?.background_color === "string" && sp.background_color.trim()) || null;
+
+          const spRawBgImage =
+            (typeof sp?.background_image_url === "string" && sp.background_image_url.trim()) || null;
+
+          const spResolvedColours = spRawColours || spRawBgColor || null;
 
           const normalizedShared = {
             ...sp,
@@ -3030,6 +3061,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
             colours: spResolvedColours,
             background: spResolvedColours,
             background_style: spResolvedColours,
+            background_color: spRawBgColor,
+            background_image_url: spRawBgImage,
             id: Number(sp.id || sp.product_id || 0),
             ...(isProductLike ? { product_id: Number(sp.product_id || sp.id || 0) } : {}),
             title: sp.title || sp.name || "",
