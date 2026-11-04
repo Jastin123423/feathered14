@@ -1,3 +1,4 @@
+// api/post/[id].ts
 import type { PagesFunction } from "@cloudflare/workers-types";
 
 type Env = { DB: D1Database };
@@ -29,12 +30,10 @@ const TRANSFORM_BASE = "https://featheredsocial.site/cdn-cgi/media";
 const guessTypeFromUrl = (url: string) => {
   const u = String(url || "").toLowerCase();
 
-  // Cloudflare Media Transformation URLs
   if (u.includes("/cdn-cgi/media/")) {
     if (u.includes("mode=video")) return "video";
     if (u.includes("mode=audio")) return "audio";
     if (u.includes("mode=frame") || u.includes("mode=spritesheet")) return "image";
-    // default for /cdn-cgi/media/ without explicit mode is image (auto)
     if (u.includes("mode=image")) return "image";
   }
 
@@ -81,6 +80,81 @@ function buildImageVariants(imageUrl: string) {
   };
 }
 
+/* =========================================================
+   Background resolution helpers
+   ---------------------------------------------------------
+   The posts table has THREE background storage fields:
+     - colours            TEXT   → authoritative: static CSS
+                                    gradient OR animated template
+                                    like "animated:blooming_rose|align:center|color:#FFF|font:bold"
+     - background_color   TEXT   → legacy solid hex (pre-animated era)
+     - background_image_url TEXT → static image background
+
+   The client renders with the following precedence:
+        background_image_url  (highest)
+              ↓
+        colours               (animated or gradient)
+              ↓
+        background_color      (legacy solid hex)
+              ↓
+        default brand gradient (fallback)
+
+   The GET response exposes ALL THREE raw fields PLUS
+   resolved aliases (`colours`, `background`, `background_style`)
+   so old and new clients both work.
+   ========================================================= */
+type PostBackgroundFields = {
+  colours: string | null;
+  background_color: string | null;
+  background_image_url: string | null;
+};
+
+function extractBackgroundFields(post: any): PostBackgroundFields {
+  if (!post) {
+    return { colours: null, background_color: null, background_image_url: null };
+  }
+  const colours = toStr(post.colours, "").trim() || null;
+  const background_color = toStr(post.background_color, "").trim() || null;
+  const background_image_url = toStr(post.background_image_url, "").trim() || null;
+  return { colours, background_color, background_image_url };
+}
+
+/**
+ * Resolve which string should be exposed under the legacy aliases
+ * (`colours`, `background`, `background_style`).
+ *
+ * If `colours` is present, it wins outright.
+ * If only `background_color` is present (legacy post), we promote it into
+ * the alias fields so old clients render it as they always did.
+ * If only `background_image_url` is present, we still return null for the
+ * alias — old clients didn't understand image backgrounds anyway, and we
+ * don't want them to accidentally try to parse a URL as a gradient.
+ */
+function resolveColoursAlias(fields: PostBackgroundFields): string | null {
+  return fields.colours ?? fields.background_color ?? null;
+}
+
+/* =========================================================
+   Attach background fields + aliases to a post object
+   ========================================================= */
+function decoratePostWithBackgrounds<T extends Record<string, any> | null>(post: T): T {
+  if (!post) return post;
+
+  const bg = extractBackgroundFields(post);
+  const alias = resolveColoursAlias(bg);
+
+  return {
+    ...post,
+    // Raw schema fields, always present
+    colours: bg.colours,
+    background_color: bg.background_color,
+    background_image_url: bg.background_image_url,
+    // Legacy aliases — what existing mobile / web clients read
+    background: alias,
+    background_style: alias,
+  } as T;
+}
+
 export const onRequestOptions: PagesFunction = async () =>
   new Response(null, { status: 204, headers: cors });
 
@@ -111,6 +185,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
 
     if (!post) return json({ success: false, error: "Post not found" }, 404);
 
+    // Load shared post if present
     let sharedPost: any = null;
     const sharedId = toNum(post.shared_post_id, 0);
     if (sharedId > 0) {
@@ -130,22 +205,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
         .first<any>();
     }
 
-    const postColours = (typeof post.colours === 'string' && post.colours.trim()) || (typeof post.background === 'string' && post.background.trim()) || (typeof post.background_style === 'string' && post.background_style.trim()) || null;
-    const sharedColours = sharedPost ? ((typeof sharedPost.colours === 'string' && sharedPost.colours.trim()) || (typeof sharedPost.background === 'string' && sharedPost.background.trim()) || (typeof sharedPost.background_style === 'string' && sharedPost.background_style.trim()) || null) : null;
+    const decoratedPost = decoratePostWithBackgrounds(post);
+    const decoratedShared = sharedPost ? decoratePostWithBackgrounds(sharedPost) : null;
 
     return json({
       success: true,
       post: {
-        ...post,
-        colours: postColours,
-        background: postColours,
-        background_style: postColours,
-        shared_post: sharedPost ? {
-          ...sharedPost,
-          colours: sharedColours,
-          background: sharedColours,
-          background_style: sharedColours,
-        } : null,
+        ...decoratedPost,
+        shared_post: decoratedShared,
       },
     });
   } catch (err: any) {
@@ -209,7 +276,8 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
 /* =========================================================
    PUT / PATCH — edit post (author only)
    Accepts any subset of: content, media_url, media_type,
-   media_urls, media_types, media_meta, visibility, brand_id
+   media_urls, media_types, media_meta, visibility, brand_id,
+   colours, background_color, background_image_url
    ========================================================= */
 const handleEdit = async (request: Request, env: Env, params: any): Promise<Response> => {
   try {
@@ -312,7 +380,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
           const t = mediaTypes[i] || guessTypeFromUrl(url);
 
           if (t === "video") {
-            // Reuse existing thumb for this URL if available
             const existing = existingMeta.find(
               (m: any) =>
                 m &&
@@ -325,7 +392,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
             return buildVideoVariants(url, thumb);
           }
 
-          // Image fallback
           return buildImageVariants(url);
         });
 
@@ -388,11 +454,40 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       bindings.push(body.brand_id === null ? null : toNum(body.brand_id, 0));
     }
 
-    // Colours / Background
-    if (body.colours !== undefined || body.background !== undefined || body.background_style !== undefined) {
-      const col = toStr(body.colours ?? body.background ?? body.background_style, "").trim();
+    // =========================================================
+    // Background fields — accept all three aliases
+    // ---------------------------------------------------------
+    // The mobile composer sends `colours` (a single serialized
+    // string that may be a static CSS gradient or an animated
+    // template id like "animated:blooming_rose|align:center|...").
+    // The web composer sends `background` / `background_style`.
+    // All three map to the `colours` column.
+    // =========================================================
+    if (
+      body.colours !== undefined ||
+      body.background !== undefined ||
+      body.background_style !== undefined
+    ) {
+      const col = toStr(
+        body.colours ?? body.background ?? body.background_style,
+        ""
+      ).trim();
       updates.push("colours = ?");
       bindings.push(col || null);
+    }
+
+    // background_color (legacy solid hex) — accepted independently
+    if (body.background_color !== undefined) {
+      const bgColor = toStr(body.background_color, "").trim();
+      updates.push("background_color = ?");
+      bindings.push(bgColor || null);
+    }
+
+    // background_image_url (static image background) — accepted independently
+    if (body.background_image_url !== undefined) {
+      const bgImage = toStr(body.background_image_url, "").trim();
+      updates.push("background_image_url = ?");
+      bindings.push(bgImage || null);
     }
 
     if (!updates.length) {
@@ -410,16 +505,20 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       .prepare(
         `SELECT
            id, user_id, content, media_url, media_type, media_urls, media_types,
-           media_meta, colours, visibility, brand_id, is_boosted, views, shares,
+           media_meta, colours, background_color, background_image_url,
+           visibility, brand_id, is_boosted, views, shares,
            created_at, updated_at
          FROM posts
          WHERE id = ?
          LIMIT 1`
       )
       .bind(postId)
-      .first();
+      .first<any>();
 
-    return json({ success: true, post: updated ?? null });
+    return json({
+      success: true,
+      post: updated ? decoratePostWithBackgrounds(updated) : null,
+    });
   } catch (err: any) {
     return json({ success: false, error: err?.message || "Failed to edit post" }, 500);
   }
