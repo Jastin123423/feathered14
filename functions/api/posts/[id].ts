@@ -5,7 +5,7 @@ type Env = { DB: D1Database };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,DELETE,PUT,PATCH,OPTIONS",
+  "Access-Control-Allow-Methods": "GET,POST,DELETE,PUT,PATCH,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, x-user-id",
 };
 
@@ -59,7 +59,6 @@ const guessTypeFromUrl = (url: string) => {
 
 /* =========================================================
    Build structured video variants (thumb, feed, full)
-   preserving original video URL and thumbnail image URL
    ========================================================= */
 function buildVideoVariants(originalUrl: string, thumbUrl: string | null = null) {
   return {
@@ -83,14 +82,7 @@ function buildImageVariants(imageUrl: string) {
 /* =========================================================
    Background resolution helpers
    ---------------------------------------------------------
-   The posts table has THREE background storage fields:
-     - colours            TEXT   → authoritative: static CSS
-                                    gradient OR animated template
-                                    like "animated:blooming_rose|align:center|color:#FFF|font:bold"
-     - background_color   TEXT   → legacy solid hex (pre-animated era)
-     - background_image_url TEXT → static image background
-
-   The client renders with the following precedence:
+   posts table background storage precedence:
         background_image_url  (highest)
               ↓
         colours               (animated or gradient)
@@ -98,10 +90,6 @@ function buildImageVariants(imageUrl: string) {
         background_color      (legacy solid hex)
               ↓
         default brand gradient (fallback)
-
-   The GET response exposes ALL THREE raw fields PLUS
-   resolved aliases (`colours`, `background`, `background_style`)
-   so old and new clients both work.
    ========================================================= */
 type PostBackgroundFields = {
   colours: string | null;
@@ -119,24 +107,10 @@ function extractBackgroundFields(post: any): PostBackgroundFields {
   return { colours, background_color, background_image_url };
 }
 
-/**
- * Resolve which string should be exposed under the legacy aliases
- * (`colours`, `background`, `background_style`).
- *
- * If `colours` is present, it wins outright.
- * If only `background_color` is present (legacy post), we promote it into
- * the alias fields so old clients render it as they always did.
- * If only `background_image_url` is present, we still return null for the
- * alias — old clients didn't understand image backgrounds anyway, and we
- * don't want them to accidentally try to parse a URL as a gradient.
- */
 function resolveColoursAlias(fields: PostBackgroundFields): string | null {
   return fields.colours ?? fields.background_color ?? null;
 }
 
-/* =========================================================
-   Attach background fields + aliases to a post object
-   ========================================================= */
 function decoratePostWithBackgrounds<T extends Record<string, any> | null>(post: T): T {
   if (!post) return post;
 
@@ -145,29 +119,297 @@ function decoratePostWithBackgrounds<T extends Record<string, any> | null>(post:
 
   return {
     ...post,
-    // Raw schema fields, always present
     colours: bg.colours,
     background_color: bg.background_color,
     background_image_url: bg.background_image_url,
-    // Legacy aliases — what existing mobile / web clients read
     background: alias,
     background_style: alias,
   } as T;
+}
+
+/* =========================================================
+   Analytics helpers
+   ---------------------------------------------------------
+   Country source precedence:  users.nationality → cf-ipcountry → null ("XX")
+   Gender source:              users.gender     → "unknown"
+   Both are snapshotted at view time into post_views.
+   ========================================================= */
+
+// Resolve viewer country from Cloudflare header (fallback only).
+const getCountryFromRequest = (request: Request): string | null => {
+  const cc = (request.headers.get("cf-ipcountry") || "").toUpperCase().trim();
+  if (!cc || cc === "XX" || cc === "T1" || cc.length !== 2) return null;
+  return cc;
+};
+
+// Single DB hit for both gender and nationality.
+const getViewerProfile = async (
+  env: Env,
+  viewerId: number
+): Promise<{ gender: string | null; nationality: string | null }> => {
+  if (!viewerId) return { gender: null, nationality: null };
+  try {
+    const row = await env.DB
+      .prepare(`SELECT gender, nationality FROM users WHERE id = ? LIMIT 1`)
+      .bind(viewerId)
+      .first<{ gender: string | null; nationality: string | null }>();
+
+    const g = (row?.gender || "").toLowerCase().trim();
+    const gender = g === "male" || g === "female" || g === "other" ? g : null;
+
+    const nat = (row?.nationality || "").toUpperCase().trim();
+    const nationality = /^[A-Z]{2}$/.test(nat) ? nat : null;
+
+    return { gender, nationality };
+  } catch {
+    return { gender: null, nationality: null };
+  }
+};
+
+// Record a view. Never throws, never blocks the response if waitUntil is provided.
+const recordView = async (
+  env: Env,
+  request: Request,
+  postId: number,
+  viewerId: number,
+  ctx?: { waitUntil: (p: Promise<any>) => void }
+): Promise<void> => {
+  const doWork = (async () => {
+    try {
+      const profile = await getViewerProfile(env, viewerId);
+
+      const ipCountry = getCountryFromRequest(request);
+      const country_code = profile.nationality || ipCountry || null;
+      const country_src = profile.nationality
+        ? "profile"
+        : ipCountry
+          ? "ip"
+          : null;
+      const gender = profile.gender || "unknown";
+
+      await env.DB.batch([
+        env.DB
+          .prepare(
+            `INSERT INTO post_views
+               (post_id, viewer_id, country_code, country_src, gender)
+             VALUES (?, ?, ?, ?, ?)`
+          )
+          .bind(postId, viewerId || null, country_code, country_src, gender),
+        env.DB
+          .prepare(`UPDATE posts SET views = COALESCE(views,0) + 1 WHERE id = ?`)
+          .bind(postId),
+      ]);
+    } catch {
+      /* swallow — analytics must never break reads */
+    }
+  })();
+
+  if (ctx) ctx.waitUntil(doWork);
+  else await doWork;
+};
+
+// Compute analytics from raw events for a single post.
+const computeAnalytics = async (env: Env, postId: number) => {
+  const rows = await env.DB
+    .prepare(
+      `SELECT
+         COALESCE(country_code, 'XX') AS cc,
+         COALESCE(gender, 'unknown')  AS g,
+         COUNT(*)                     AS c
+       FROM post_views
+       WHERE post_id = ?
+       GROUP BY cc, g`
+    )
+    .bind(postId)
+    .all<{ cc: string; g: string; c: number }>();
+
+  const countryMap = new Map<string, number>();
+  const genderMap = new Map<string, number>();
+  let total = 0;
+
+  for (const r of rows.results || []) {
+    const c = Number(r.c) || 0;
+    total += c;
+    countryMap.set(r.cc, (countryMap.get(r.cc) || 0) + c);
+    genderMap.set(r.g, (genderMap.get(r.g) || 0) + c);
+  }
+
+  const pct = (n: number) => (total ? Math.round((n / total) * 10000) / 100 : 0);
+
+  const countries = [...countryMap.entries()]
+    .map(([code, views]) => ({ code, views, pct: pct(views) }))
+    .sort((a, b) => b.views - a.views);
+
+  const genders = [...genderMap.entries()]
+    .map(([gender, views]) => ({ gender, views, pct: pct(views) }))
+    .sort((a, b) => b.views - a.views);
+
+  const top = countries[0] || null;
+
+  const male = genderMap.get("male") || 0;
+  const female = genderMap.get("female") || 0;
+  const other = genderMap.get("other") || 0;
+  const unknown = genderMap.get("unknown") || 0;
+
+  return {
+    total_views: total,
+    top_country: top?.code ?? null,
+    top_country_pct: top?.pct ?? 0,
+    male_pct: pct(male),
+    female_pct: pct(female),
+    other_pct: pct(other),
+    unknown_pct: pct(unknown),
+    countries,
+    genders,
+  };
+};
+
+// Persist computed analytics into post_analytics (upsert).
+const persistAnalytics = async (env: Env, postId: number) => {
+  const a = await computeAnalytics(env, postId);
+  await env.DB
+    .prepare(
+      `INSERT INTO post_analytics
+         (post_id, total_views, top_country, top_country_pct,
+          male_pct, female_pct, other_pct, unknown_pct,
+          country_json, gender_json, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(post_id) DO UPDATE SET
+         total_views     = excluded.total_views,
+         top_country     = excluded.top_country,
+         top_country_pct = excluded.top_country_pct,
+         male_pct        = excluded.male_pct,
+         female_pct      = excluded.female_pct,
+         other_pct       = excluded.other_pct,
+         unknown_pct     = excluded.unknown_pct,
+         country_json    = excluded.country_json,
+         gender_json     = excluded.gender_json,
+         updated_at      = CURRENT_TIMESTAMP`
+    )
+    .bind(
+      postId,
+      a.total_views,
+      a.top_country,
+      a.top_country_pct,
+      a.male_pct,
+      a.female_pct,
+      a.other_pct,
+      a.unknown_pct,
+      JSON.stringify(a.countries),
+      JSON.stringify(a.genders)
+    )
+    .run();
+  return a;
+};
+
+// Safe parse of a JSON array column.
+function safeJsonArray(v: any): any[] {
+  if (Array.isArray(v)) return v;
+  if (typeof v === "string") {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 export const onRequestOptions: PagesFunction = async () =>
   new Response(null, { status: 204, headers: cors });
 
 /* =========================================================
-   GET — fetch single post with author, reactions, and shared_post
+   GET — fetch single post
+     - ?view=1 | ?track=1   → records a view (non-blocking)
+     - ?analytics=1         → returns owner-only analytics
    ========================================================= */
-export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestGet: PagesFunction<Env> = async ({
+  request,
+  env,
+  params,
+  waitUntil,
+}) => {
   try {
     if (!env.DB) return json({ success: false, error: "DB binding missing" }, 500);
 
     const postId = toNum((params as any)?.id, 0);
     if (!postId) return json({ success: false, error: "Invalid post id" }, 400);
 
+    const url = new URL(request.url);
+    const wantsAnalytics = url.searchParams.get("analytics") === "1";
+    const shouldTrack =
+      url.searchParams.get("view") === "1" || url.searchParams.get("track") === "1";
+
+    const viewerId =
+      toNum(request.headers.get("x-user-id"), 0) ||
+      toNum(url.searchParams.get("user_id"), 0);
+
+    /* -------------------- Analytics branch -------------------- */
+    if (wantsAnalytics) {
+      const owner = await env.DB
+        .prepare(
+          `SELECT user_id FROM posts
+           WHERE id = ? AND COALESCE(is_deleted,0) = 0
+           LIMIT 1`
+        )
+        .bind(postId)
+        .first<{ user_id: number }>();
+
+      if (!owner) return json({ success: false, error: "Post not found" }, 404);
+      if (toNum(owner.user_id) !== viewerId) {
+        return json({ success: false, error: "Not allowed" }, 403);
+      }
+
+      const cached = await env.DB
+        .prepare(`SELECT * FROM post_analytics WHERE post_id = ? LIMIT 1`)
+        .bind(postId)
+        .first<any>();
+
+      const live = await env.DB
+        .prepare(`SELECT COALESCE(views,0) AS v FROM posts WHERE id = ? LIMIT 1`)
+        .bind(postId)
+        .first<{ v: number }>();
+
+      const liveViews = toNum(live?.v, 0);
+      const isStale = !cached || toNum(cached.total_views, 0) !== liveViews;
+
+      // Recompute on demand if the rollup is out of date.
+      const fresh = isStale ? await persistAnalytics(env, postId) : null;
+
+      const data =
+        fresh || {
+          total_views: toNum(cached?.total_views, 0),
+          top_country: cached?.top_country ?? null,
+          top_country_pct: toNum(cached?.top_country_pct, 0),
+          male_pct: toNum(cached?.male_pct, 0),
+          female_pct: toNum(cached?.female_pct, 0),
+          other_pct: toNum(cached?.other_pct, 0),
+          unknown_pct: toNum(cached?.unknown_pct, 0),
+          countries: safeJsonArray(cached?.country_json),
+          genders: safeJsonArray(cached?.gender_json),
+        };
+
+      // Include author's own declared country/gender for UI context.
+      const author = await env.DB
+        .prepare(`SELECT gender, nationality FROM users WHERE id = ? LIMIT 1`)
+        .bind(toNum(owner.user_id, 0))
+        .first<{ gender: string | null; nationality: string | null }>();
+
+      return json({
+        success: true,
+        post_id: postId,
+        analytics: {
+          ...data,
+          author: {
+            gender: (author?.gender || "").toLowerCase() || null,
+            country: (author?.nationality || "").toUpperCase() || null,
+          },
+        },
+      });
+    }
+
+    /* -------------------- Normal post fetch -------------------- */
     const post = await env.DB
       .prepare(`
         SELECT p.*,
@@ -184,6 +426,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
       .first<any>();
 
     if (!post) return json({ success: false, error: "Post not found" }, 404);
+
+    // Record a view when explicitly asked to. Skip the author viewing own post.
+    if (shouldTrack) {
+      const authorId = toNum(post.user_id, 0);
+      if (viewerId !== authorId) {
+        await recordView(env, request, postId, viewerId, { waitUntil });
+      }
+    }
 
     // Load shared post if present
     let sharedPost: any = null;
@@ -206,7 +456,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     }
 
     const decoratedPost = decoratePostWithBackgrounds(post);
-    const decoratedShared = sharedPost ? decoratePostWithBackgrounds(sharedPost) : null;
+    const decoratedShared = sharedPost
+      ? decoratePostWithBackgrounds(sharedPost)
+      : null;
 
     return json({
       success: true,
@@ -221,7 +473,49 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
 };
 
 /* =========================================================
-   DELETE — soft delete (author only)
+   POST — lightweight view beacon
+   (for IntersectionObserver / impression tracking)
+   ========================================================= */
+export const onRequestPost: PagesFunction<Env> = async ({
+  request,
+  env,
+  params,
+  waitUntil,
+}) => {
+  try {
+    if (!env.DB) return json({ success: false, error: "DB binding missing" }, 500);
+
+    const postId = toNum((params as any)?.id, 0);
+    if (!postId) return json({ success: false, error: "Invalid post id" }, 400);
+
+    const body: any = await request.json().catch(() => ({}));
+    const viewerId =
+      toNum(request.headers.get("x-user-id"), 0) || toNum(body?.user_id, 0);
+
+    const exists = await env.DB
+      .prepare(
+        `SELECT user_id FROM posts
+         WHERE id = ? AND COALESCE(is_deleted,0) = 0
+         LIMIT 1`
+      )
+      .bind(postId)
+      .first<{ user_id: number }>();
+
+    if (!exists) return json({ success: false, error: "Post not found" }, 404);
+
+    // Don't count the author's own view.
+    if (viewerId !== toNum(exists.user_id, 0)) {
+      await recordView(env, request, postId, viewerId, { waitUntil });
+    }
+
+    return json({ success: true, recorded: true, post_id: postId });
+  } catch (err: any) {
+    return json({ success: false, error: err?.message || "Failed to record view" }, 500);
+  }
+};
+
+/* =========================================================
+   DELETE — soft delete (author only) + purge analytics rows
    ========================================================= */
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
@@ -251,16 +545,22 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
       return json({ success: false, error: "Not allowed" }, 403);
     }
 
-    await env.DB
-      .prepare(
-        `UPDATE posts
-         SET is_deleted = 1,
-             deleted_by = ?,
-             deleted_at = CURRENT_TIMESTAMP
-         WHERE id = ?`
-      )
-      .bind(userId, postId)
-      .run();
+    // Soft-delete the post AND purge its analytics in one batch.
+    // If you'd rather keep analytics for admin dashboards,
+    // remove the two DELETE lines below.
+    await env.DB.batch([
+      env.DB
+        .prepare(
+          `UPDATE posts
+           SET is_deleted = 1,
+               deleted_by = ?,
+               deleted_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        )
+        .bind(userId, postId),
+      env.DB.prepare(`DELETE FROM post_views     WHERE post_id = ?`).bind(postId),
+      env.DB.prepare(`DELETE FROM post_analytics WHERE post_id = ?`).bind(postId),
+    ]);
 
     return json({
       success: true,
@@ -275,9 +575,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
 
 /* =========================================================
    PUT / PATCH — edit post (author only)
-   Accepts any subset of: content, media_url, media_type,
-   media_urls, media_types, media_meta, visibility, brand_id,
-   colours, background_color, background_image_url
    ========================================================= */
 const handleEdit = async (request: Request, env: Env, params: any): Promise<Response> => {
   try {
@@ -307,11 +604,10 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       return json({ success: false, error: "Not allowed" }, 403);
     }
 
-    // -------- Build dynamic UPDATE from provided fields --------
     const updates: string[] = [];
     const bindings: any[] = [];
 
-    // Text content (accept "content" or "text")
+    // -------- Text content (accept "content" or "text") --------
     if (body.content !== undefined || body.text !== undefined) {
       const content = toStr(body.content ?? body.text, "").trim();
       if (content.length > 5000) {
@@ -321,7 +617,7 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       bindings.push(content);
     }
 
-    // Media handling with full synchronization
+    // -------- Media handling with full synchronization --------
     const rawMediaUrls = body.media_urls !== undefined ? body.media_urls : body.images;
     if (rawMediaUrls !== undefined) {
       let cleanUrls: string[] = [];
@@ -346,7 +642,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       updates.push("media_urls = ?");
       bindings.push(JSON.stringify(cleanUrls));
 
-      // Synchronize media_types
       let mediaTypes: string[] = [];
       if (Array.isArray(body.media_types)) {
         mediaTypes = body.media_types.map(String);
@@ -356,7 +651,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       updates.push("media_types = ?");
       bindings.push(JSON.stringify(mediaTypes));
 
-      // Synchronize media_meta
       if (body.media_meta !== undefined) {
         updates.push("media_meta = ?");
         bindings.push(
@@ -365,7 +659,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
             : JSON.stringify(body.media_meta ?? [])
         );
       } else {
-        // Try to preserve existing rich video metadata when possible
         let existingMeta: any[] = [];
         if (post.media_meta) {
           try {
@@ -378,7 +671,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
 
         const synthMeta = cleanUrls.map((url, i) => {
           const t = mediaTypes[i] || guessTypeFromUrl(url);
-
           if (t === "video") {
             const existing = existingMeta.find(
               (m: any) =>
@@ -391,7 +683,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
             const thumb = existing?.thumb ?? null;
             return buildVideoVariants(url, thumb);
           }
-
           return buildImageVariants(url);
         });
 
@@ -399,7 +690,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
         bindings.push(JSON.stringify(synthMeta));
       }
 
-      // Synchronize media_url and media_type
       if (body.media_url !== undefined) {
         updates.push("media_url = ?");
         bindings.push(toStr(body.media_url, "").trim() || null);
@@ -418,7 +708,6 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
         );
       }
     } else {
-      // Primary media single fields when media_urls is omitted
       if (body.media_url !== undefined) {
         updates.push("media_url = ?");
         bindings.push(toStr(body.media_url, "").trim() || null);
@@ -437,7 +726,7 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       }
     }
 
-    // Visibility
+    // -------- Visibility --------
     if (body.visibility !== undefined) {
       const visibility = toStr(body.visibility, "").trim();
       const allowed = new Set(["Public", "Private", "Friends", "Group"]);
@@ -448,21 +737,13 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       bindings.push(visibility);
     }
 
-    // Brand
+    // -------- Brand --------
     if (body.brand_id !== undefined) {
       updates.push("brand_id = ?");
       bindings.push(body.brand_id === null ? null : toNum(body.brand_id, 0));
     }
 
-    // =========================================================
-    // Background fields — accept all three aliases
-    // ---------------------------------------------------------
-    // The mobile composer sends `colours` (a single serialized
-    // string that may be a static CSS gradient or an animated
-    // template id like "animated:blooming_rose|align:center|...").
-    // The web composer sends `background` / `background_style`.
-    // All three map to the `colours` column.
-    // =========================================================
+    // -------- Backgrounds --------
     if (
       body.colours !== undefined ||
       body.background !== undefined ||
@@ -476,14 +757,12 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       bindings.push(col || null);
     }
 
-    // background_color (legacy solid hex) — accepted independently
     if (body.background_color !== undefined) {
       const bgColor = toStr(body.background_color, "").trim();
       updates.push("background_color = ?");
       bindings.push(bgColor || null);
     }
 
-    // background_image_url (static image background) — accepted independently
     if (body.background_image_url !== undefined) {
       const bgImage = toStr(body.background_image_url, "").trim();
       updates.push("background_image_url = ?");
