@@ -32,6 +32,7 @@
     "@google/genai": "^1.35.0",
     "@hono/zod-validator": "^0.7.6",
     "express": "^4.21.2",
+    "fcm-cloudflare-workers": "^2.0.3",
     "firebase": "^12.19.0",
     "hono": "^4.11.3",
     "jose": "^6.1.3",
