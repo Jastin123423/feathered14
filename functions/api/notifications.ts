@@ -1,4 +1,3 @@
-
 import type { PagesFunction } from '@cloudflare/workers-types';
 import { sendPushForNotification } from './_push';
 
