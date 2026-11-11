@@ -1,6 +1,11 @@
 import type { PagesFunction } from '@cloudflare/workers-types';
+import { sendPushForNotification } from './_push';
 
-type Env = { DB: D1Database };
+type Env = {
+  DB: D1Database;
+  FIREBASE_SERVICE_ACCOUNT_JSON: string;
+  FCM_KV?: KVNamespace;
+};
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -50,8 +55,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
 /* ==============================
    CREATE NOTIFICATION
+   + SEND PUSH VIA FCM
 ================================*/
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({
+  request,
+  env,
+  waitUntil,
+}) => {
   try {
     const body = await request.json();
 
@@ -63,7 +73,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       entity_id,
       parent_id,
       group_key,
-      message
+      message,
     } = body || {};
 
     if (!recipient_id || !actor_id || !type) {
@@ -99,6 +109,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         message || null
       )
       .run();
+
+    // Fire push in the background — never blocks the HTTP response,
+    // never fails the insert even if FCM errors.
+    waitUntil(
+      sendPushForNotification(env, {
+        recipient_id: Number(recipient_id),
+        actor_id: Number(actor_id),
+        type,
+        entity_type: entity_type || null,
+        entity_id: entity_id != null ? String(entity_id) : null,
+        parent_id: parent_id != null ? String(parent_id) : null,
+        group_key: group_key || null,
+        message: message || null,
+      })
+    );
 
     return json({ success: true });
   } catch (err) {
