@@ -32,7 +32,8 @@ const toNum = (v: any, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestPost: PagesFunction<Env> = async (context) => {
+  const { request, env, params, waitUntil } = context; // 👈 Added waitUntil here
   try {
     const postId = Number((params as any)?.id);
     if (!Number.isFinite(postId) || postId <= 0) {
@@ -109,19 +110,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
         "reply",
         "comment",
         parentCommentId,
-        `post_comment:${parentCommentId}:reply`,
-        "replied in Discuss"
+        `feathered_reply`, 
+        text,              
+        waitUntil          // 👈 Triggers push
       );
     } else {
       await createNotification(
         env,
         postOwnerId,
         userId,
-        "discuss",
+        "comment",         
         "post",
         postId,
-        `post:${postId}:discuss`,
-        "discussed your post"
+        `feathered_comment`, 
+        text,                
+        waitUntil            // 👈 Triggers push
       );
     }
 
