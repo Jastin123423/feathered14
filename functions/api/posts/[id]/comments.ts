@@ -37,11 +37,6 @@ const ADMIN_ROLES = new Set(["admin", "superadmin", "moderator", "owner"]);
 
 /* =========================================================
    GET /api/posts/:id/comments
-   Query: ?viewerId=X  OR header x-user-id
-   - Excludes admin-deleted comments
-   - Excludes admin-hidden comments from non-admins
-   - Shows author their own hidden comment
-   - Admin sees everything (with is_hidden label)
    ========================================================= */
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   try {
@@ -62,7 +57,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
       : 200;
     const offset = offsetParam ? Math.max(Number(offsetParam), 0) : 0;
 
-    // Admin check
     let isAdmin = false;
     if (viewerId > 0) {
       const u = await env.DB
@@ -75,46 +69,22 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
 
     const q = `
       SELECT
-        pc.id,
-        pc.post_id,
-        pc.user_id,
-        pc.text,
-        pc.image_url,
-        pc.created_at,
-        pc.updated_at,
-        pc.parent_comment_id,
-        pc.hidden_scope,
-        pc.hidden_by,
+        pc.id, pc.post_id, pc.user_id, pc.text, pc.image_url,
+        pc.created_at, pc.updated_at, pc.parent_comment_id,
+        pc.hidden_scope, pc.hidden_by,
         u.username AS author_name,
         u.name AS author_full_name,
         u.profile_image_url AS author_image,
         u.is_verified AS author_is_verified,
         u.role AS author_role,
-
-        (SELECT COUNT(*)
-         FROM post_comment_likes pcl
-         WHERE pcl.comment_id = pc.id) AS likes_count,
-
-        (SELECT COUNT(*)
-         FROM post_comments child
-         WHERE child.parent_comment_id = pc.id
-           AND COALESCE(child.is_deleted, 0) = 0) AS replies_count,
-
-        (SELECT 1
-         FROM post_comment_likes pcl
-         WHERE pcl.comment_id = pc.id
-           AND pcl.user_id = ?
-         LIMIT 1) AS liked_by_me
-
+        (SELECT COUNT(*) FROM post_comment_likes pcl WHERE pcl.comment_id = pc.id) AS likes_count,
+        (SELECT COUNT(*) FROM post_comments child WHERE child.parent_comment_id = pc.id AND COALESCE(child.is_deleted, 0) = 0) AS replies_count,
+        (SELECT 1 FROM post_comment_likes pcl WHERE pcl.comment_id = pc.id AND pcl.user_id = ? LIMIT 1) AS liked_by_me
       FROM post_comments pc
       LEFT JOIN users u ON u.id = pc.user_id
       WHERE pc.post_id = ?
         AND COALESCE(pc.is_deleted, 0) = 0
-        AND (
-          pc.hidden_scope IS NULL
-          OR pc.user_id = ?
-          OR ? = 1
-        )
+        AND (pc.hidden_scope IS NULL OR pc.user_id = ? OR ? = 1)
       ORDER BY pc.created_at ASC, pc.id ASC
       LIMIT ? OFFSET ?
     `;
@@ -144,10 +114,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
 };
 
 /* =========================================================
-   POST /api/posts/:id/comments
-   body: { user_id, text, image_url?, parent_comment_id? }
+   POST /api/posts/:id/comments  👈 FIXED VERSION
    ========================================================= */
-export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestPost: PagesFunction<Env> = async (context) => {   // 👈 GET FULL CONTEXT
+  const { request, env, params, waitUntil } = context;                   // 👈 DESTRUCTURE waitUntil
   try {
     if (!env.DB) return json({ success: false, error: "DB binding missing" }, 500);
 
@@ -173,7 +143,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       return json({ success: false, error: "Comment is too long" }, 400);
     }
 
-    // Post exists?
     const post: any = await env.DB
       .prepare(`SELECT id, user_id FROM posts WHERE id = ? LIMIT 1`)
       .bind(postId)
@@ -181,7 +150,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
     if (!post) return json({ success: false, error: "Post not found" }, 404);
 
-    // Parent comment check
     let parentComment: any = null;
     if (parentCommentId) {
       parentComment = await env.DB
@@ -205,7 +173,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       }
     }
 
-    // Insert (text always a string, never null)
     const insert = await env.DB
       .prepare(
         `INSERT INTO post_comments (post_id, user_id, text, image_url, parent_comment_id)
@@ -219,52 +186,46 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       return json({ success: false, error: "Failed to create comment" }, 500);
     }
 
-    // Notify (self-guarded)
+    /* --------------------------------------------------
+       NOTIFICATION LOGIC (FIXED)
+    ---------------------------------------------------*/
     const postOwnerId = toInt(post?.user_id, 0);
 
     if (parentCommentId && parentComment) {
       const parentOwnerId = toInt(parentComment.user_id, 0);
       if (parentOwnerId && parentOwnerId !== userId) {
-        try {
-          await createNotification(
-            env,
-            parentOwnerId,
-            userId,
-            "reply",
-            "post_comment",
-            parentCommentId,
-            `post_comment:${parentCommentId}:reply`,
-            "replied to your comment"
-          );
-        } catch (_) {}
-      }
-    } else if (postOwnerId && postOwnerId !== userId) {
-      try {
         await createNotification(
           env,
-          postOwnerId,
+          parentOwnerId,
           userId,
-          "discuss",
-          "post",
-          postId,
-          `post:${postId}:discuss`,
-          "commented on your post"
+          "reply",
+          "post_comment",
+          parentCommentId,
+          `feathered_reply`,
+          text,
+          waitUntil        // 👈 PASS IT HERE
         );
-      } catch (_) {}
+      }
+    } else if (postOwnerId && postOwnerId !== userId) {
+      await createNotification(
+        env,
+        postOwnerId,
+        userId,
+        "comment",           // 👈 Changed from "discuss" to "comment"
+        "post",
+        postId,
+        `feathered_comment`,
+        text,
+        waitUntil            // 👈 PASS IT HERE
+      );
     }
 
     // Return the created comment
     const comment = await env.DB
       .prepare(
         `SELECT
-           pc.id,
-           pc.post_id,
-           pc.user_id,
-           pc.text,
-           pc.image_url,
-           pc.created_at,
-           pc.updated_at,
-           pc.parent_comment_id,
+           pc.id, pc.post_id, pc.user_id, pc.text, pc.image_url,
+           pc.created_at, pc.updated_at, pc.parent_comment_id,
            u.username AS author_name,
            u.name AS author_full_name,
            u.profile_image_url AS author_image,
