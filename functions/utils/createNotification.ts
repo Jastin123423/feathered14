@@ -21,18 +21,32 @@ export async function createNotification(
     const cleanMessage =
       typeof message === "string" && message.trim() ? message.trim() : null;
 
-    // 👈 We wrap our push function so it matches your waitUntil logic
-    const queuePush = async () => {
-      const pushPromise = sendPushForNotification(env, {
+    const sendNativePush = async () => {
+      console.log("CREATE_NOTIFICATION_PUSH_ATTEMPT", {
+        recipient_id,
+        actor_id,
+        type,
+        entity_type,
+        entity_id,
+      });
+
+      // 👈 We call the correct function and pass the exact object shape it expects
+      await sendPushForNotification(env, {
         recipient_id,
         actor_id,
         type,
         entity_type: entity_type || null,
         entity_id: entityIdValue,
-        parent_id: null, // You can pass this if you have it
+        parent_id: null,
         group_key: cleanGroupKey || `feathered_${type}`,
         message: cleanMessage,
-      }).catch((e) => console.error("Native push failed:", e));
+      });
+    };
+
+    const queuePush = async () => {
+      const pushPromise = sendNativePush().catch((e) =>
+        console.error("Native push failed:", e)
+      );
 
       if (ctx?.waitUntil) {
         ctx.waitUntil(pushPromise);
