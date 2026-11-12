@@ -1,215 +1,82 @@
-export type Env = {
-  DB: D1Database;
-  FIREBASE_SERVICE_ACCOUNT_JSON: string;
-  FIREBASE_PROJECT_ID?: string;
-};
+import { sendPushForNotification } from "./pushNotifications";
 
-const textEncoder = new TextEncoder();
-
-const base64UrlEncode = (input: ArrayBuffer | string) => {
-  let bytes: Uint8Array;
-  if (typeof input === "string") {
-    bytes = textEncoder.encode(input);
-  } else {
-    bytes = new Uint8Array(input);
-  }
-
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-};
-
-const pemToArrayBuffer = (pem: string) => {
-  const clean = pem
-    .replace("-----BEGIN PRIVATE KEY-----", "")
-    .replace("-----END PRIVATE KEY-----", "")
-    .replace(/\s/g, "");
-
-  const binary = atob(clean);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-};
-
-const getServiceAccount = (env: Env) => {
-  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON secret missing");
-  }
-  const serviceAccount =
-    typeof env.FIREBASE_SERVICE_ACCOUNT_JSON === "string"
-      ? JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON)
-      : env.FIREBASE_SERVICE_ACCOUNT_JSON;
-
-  if (!serviceAccount.client_email || !serviceAccount.private_key) {
-    throw new Error("Invalid Firebase service account JSON");
-  }
-  return serviceAccount;
-};
-
-const getAccessToken = async (env: Env) => {
-  const serviceAccount = getServiceAccount(env);
-  const now = Math.floor(Date.now() / 1000);
-
-  const header = { alg: "RS256", typ: "JWT" };
-  const claimSet = {
-    iss: serviceAccount.client_email,
-    scope: "https://www.googleapis.com/auth/firebase.messaging",
-    aud: "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
-  };
-
-  const unsignedJwt = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(claimSet))}`;
-
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pemToArrayBuffer(serviceAccount.private_key),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    textEncoder.encode(unsignedJwt)
-  );
-
-  const jwt = `${unsignedJwt}.${base64UrlEncode(signature)}`;
-
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: jwt,
-    }),
-  });
-
-  const tokenJson: any = await tokenRes.json();
-  if (!tokenRes.ok) {
-    throw new Error(`OAuth token failed: ${JSON.stringify(tokenJson)}`);
-  }
-  return tokenJson.access_token as string;
-};
-
-const stringifyData = (data?: Record<string, any>) => {
-  const out: Record<string, string> = {};
-  for (const [key, value] of Object.entries(data || {})) {
-    if (value === undefined || value === null) continue;
-    out[key] = String(value);
-  }
-  return out;
-};
-
-// 👈 This export matches your createNotification.ts
-export async function sendPushForNotification(
-  env: Env,
-  n: {
-    recipient_id: number;
-    actor_id: number;
-    type: string;
-    entity_type: string | null;
-    entity_id: string | null;
-    parent_id: string | null;
-    group_key: string | null;
-    message: string | null;
-  }
-): Promise<void> {
+export async function createNotification(
+  env: any,
+  recipient_id: number,
+  actor_id: number,
+  type: string,
+  entity_type: string,
+  entity_id: number | string,
+  group_key: string,
+  message?: string | null,
+  ctx?: ExecutionContext
+) {
   try {
-    const userId = Number(n.recipient_id);
-    if (!userId) return;
+    if (!env?.DB) return;
+    if (!recipient_id || !actor_id || !type) return;
+    if (recipient_id === actor_id) return;
 
-    const projectId = env.FIREBASE_PROJECT_ID || getServiceAccount(env).project_id;
-    if (!projectId) throw new Error("FIREBASE_PROJECT_ID missing");
+    const entityIdValue = entity_id != null ? String(entity_id) : null;
+    const cleanGroupKey = typeof group_key === "string" ? group_key.trim() : "";
+    const cleanMessage = typeof message === "string" && message.trim() ? message.trim() : null;
 
-    // 1. Fetch tokens from device_tokens
-    const tokensRes = await env.DB.prepare(`
-      SELECT token FROM device_tokens
-      WHERE user_id = ?
-      ORDER BY updated_at DESC
-      LIMIT 20
-    `).bind(userId).all();
+    const sendNativePush = async () => {
+      await sendPushForNotification(env, {
+        recipient_id,
+        actor_id,
+        type,
+        entity_type: entity_type || null,
+        entity_id: entityIdValue,
+        parent_id: null,
+        group_key: cleanGroupKey || `feathered_${type}`,
+        message: cleanMessage,
+      });
+    };
 
-    const tokens = (tokensRes.results || [])
-      .map((x: any) => String(x.token || "").trim())
-      .filter(Boolean);
+    const queuePush = async () => {
+      const pushPromise = sendNativePush().catch((e) => console.error("Native push failed:", e));
+      if (ctx?.waitUntil) ctx.waitUntil(pushPromise);
+      else await pushPromise;
+    };
 
-    if (tokens.length === 0) return;
+    // 1. Check for existing notification to group
+    if (cleanGroupKey) {
+      const existing = await env.DB.prepare(`
+        SELECT id, actor_id, actors_count FROM notifications
+        WHERE recipient_id = ? AND group_key = ? AND created_at > datetime('now', '-24 hours')
+        ORDER BY COALESCE(updated_at, created_at) DESC, id DESC LIMIT 1
+      `).bind(recipient_id, cleanGroupKey).first<{ id: number; actor_id: number; actors_count: number | null }>();
 
-    // 2. Fetch actor's real name
-    let actorName = "Someone";
-    try {
-      const actor = await env.DB.prepare(`SELECT username FROM users WHERE id = ? LIMIT 1`)
-        .bind(n.actor_id)
-        .first<{ username: string | null }>();
-      if (actor?.username) actorName = actor.username;
-    } catch { }
+      if (existing) {
+        const sameActorRecent = await env.DB.prepare(`
+          SELECT id FROM notifications
+          WHERE recipient_id = ? AND group_key = ? AND actor_id = ? AND created_at > datetime('now', '-24 hours') LIMIT 1
+        `).bind(recipient_id, cleanGroupKey, actor_id).first();
 
-    // 3. Format Title and Body
-    let title = "Feathered Social";
-    let body = n.message || "You have new activity";
-
-    if (n.type === "discuss" || n.type === "comment") {
-      title = "New Discussion";
-      body = n.message ? `${actorName}: ${n.message}` : `${actorName} joined Discussion on your post`;
-    } else if (n.type === "reply") {
-      title = "New Reply";
-      body = n.message ? `${actorName}: ${n.message}` : `${actorName} replied to you`;
-    } else if (n.type === "follow") {
-      title = "New Follower";
-      body = `${actorName} started following you`;
-    }
-
-    const accessToken = await getAccessToken(env);
-    const groupKey = n.group_key || `feathered_${n.type}`;
-
-    // 4. Send to Firebase
-    for (const token of tokens) {
-      const res = await fetch(
-        `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: {
-              token,
-              notification: { title, body },
-              data: stringifyData({
-                type: n.type,
-                groupKey: groupKey,
-                entityId: n.entity_id || "",
-                entityType: n.entity_type || "",
-                actorId: String(n.actor_id),
-              }),
-              android: {
-                priority: "HIGH",
-                notification: {
-                  channel_id: "feathered_social", // 👈 Matches Android Kotlin
-                  sound: "default",
-                  tag: groupKey, // 👈 Enables native grouping
-                },
-              },
-            },
-          }),
+        if (sameActorRecent) {
+          await env.DB.prepare(`
+            UPDATE notifications SET actor_id = ?, message = COALESCE(?, message), is_read = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+          `).bind(actor_id, cleanMessage, existing.id).run();
+          await queuePush();
+          return;
         }
-      );
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error("FCM Push Error:", errorData);
+        await env.DB.prepare(`
+          UPDATE notifications SET actor_id = ?, message = COALESCE(?, message), is_read = 0, actors_count = COALESCE(actors_count, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(actor_id, cleanMessage, existing.id).run();
+        await queuePush();
+        return;
       }
     }
-  } catch (err) {
-    console.error("sendPushForNotification failed:", err);
+
+    // 2. Insert new notification
+    await env.DB.prepare(`
+      INSERT INTO notifications (recipient_id, actor_id, type, entity_type, entity_id, group_key, message, is_read, actors_count, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, CURRENT_TIMESTAMP)
+    `).bind(recipient_id, actor_id, type, entity_type || null, entityIdValue, cleanGroupKey || null, cleanMessage).run();
+
+    await queuePush();
+  } catch (error) {
+    console.error("createNotification failed:", error);
   }
 }
