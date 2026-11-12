@@ -1,4 +1,4 @@
-type Env = {
+export type Env = {
   DB: D1Database;
   FCM_PROJECT_ID: string;
   FCM_CLIENT_EMAIL: string;
@@ -43,10 +43,7 @@ const importPrivateKey = async (privateKeyPem: string) => {
 const getAccessToken = async (env: Env) => {
   const now = Math.floor(Date.now() / 1000);
 
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-  };
+  const header = { alg: "RS256", typ: "JWT" };
 
   const claim = {
     iss: env.FCM_CLIENT_EMAIL,
@@ -56,8 +53,7 @@ const getAccessToken = async (env: Env) => {
     exp: now + 3600,
   };
 
-  const unsigned =
-    `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(claim))}`;
+  const unsigned = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(claim))}`;
 
   const key = await importPrivateKey(env.FCM_PRIVATE_KEY);
   const signature = await crypto.subtle.sign(
@@ -83,68 +79,99 @@ const getAccessToken = async (env: Env) => {
   return data.access_token as string;
 };
 
-export const sendPushToUser = async (
+// 👈 This is the export that createNotification.ts is looking for
+export async function sendPushForNotification(
   env: Env,
-  userId: number,
-  payload: {
-    title: string;
-    body: string;
-    data?: Record<string, string>;
+  n: {
+    recipient_id: number;
+    actor_id: number;
+    type: string;
+    entity_type: string | null;
+    entity_id: string | null;
+    parent_id: string | null;
+    group_key: string | null;
+    message: string | null;
   }
-) => {
-  const tokensRes = await env.DB.prepare(`
-    SELECT token FROM push_tokens
-    WHERE user_id = ? AND is_active = 1
-  `).bind(userId).all();
+): Promise<void> {
+  try {
+    // 1. Get tokens from device_tokens (not push_tokens)
+    const tokensRes = await env.DB.prepare(`
+      SELECT token FROM device_tokens
+      WHERE user_id = ?
+    `).bind(n.recipient_id).all();
 
-  const tokens = (tokensRes.results || [])
-    .map((r: any) => String(r.token || "").trim())
-    .filter(Boolean);
+    const tokens = (tokensRes.results || [])
+      .map((r: any) => String(r.token || "").trim())
+      .filter(Boolean);
 
-  if (!tokens.length) return { sent: 0 };
+    if (!tokens.length) return;
 
-  const accessToken = await getAccessToken(env);
+    // 2. Fetch actor name
+    let actorName = "Someone";
+    try {
+      const actor = await env.DB.prepare(`SELECT username FROM users WHERE id = ? LIMIT 1`)
+        .bind(n.actor_id)
+        .first<{ username: string | null }>();
+      if (actor?.username) actorName = actor.username;
+    } catch { }
 
-  let sent = 0;
+    // 3. Format Title and Body
+    let title = "Feathered Social";
+    let body = n.message || "You have new activity";
 
-  for (const token of tokens) {
-    const res = await fetch(
-      `https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: {
-            token,
-            notification: {
-              title: payload.title,
-              body: payload.body,
-            },
-            data: payload.data || {},
-            android: {
-              priority: "HIGH",
-              notification: {
-                channel_id: "unera_notifications",
-                sound: "default",
+    if (n.type === "discuss" || n.type === "comment") {
+      title = "New Discussion";
+      body = n.message ? `${actorName}: ${n.message}` : `${actorName} joined Discussion on your post`;
+    } else if (n.type === "reply") {
+      title = "New Reply";
+      body = n.message ? `${actorName}: ${n.message}` : `${actorName} replied to you`;
+    } else if (n.type === "follow") {
+      title = "New Follower";
+      body = `${actorName} started following you`;
+    }
+
+    const groupKey = n.group_key || `feathered_${n.type}`;
+    const accessToken = await getAccessToken(env);
+
+    for (const token of tokens) {
+      const res = await fetch(
+        `https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: {
+              token,
+              notification: { title, body },
+              data: {
+                type: n.type,
+                groupKey: groupKey,
+                entityId: n.entity_id || "",
+                entityType: n.entity_type || "",
+                actorId: String(n.actor_id),
+              },
+              android: {
+                priority: "HIGH",
+                notification: {
+                  channel_id: "feathered_social", // 👈 Matches your Android app
+                  sound: "default",
+                  tag: groupKey, // 👈 Allows Android to group them natively
+                },
               },
             },
-          },
-        }),
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("FCM Push Error:", errorData);
       }
-    );
-
-    if (res.ok) {
-      sent++;
-    } else if (res.status === 404 || res.status === 400) {
-      await env.DB.prepare(`
-        UPDATE push_tokens SET is_active = 0, updated_at = CURRENT_TIMESTAMP
-        WHERE token = ?
-      `).bind(token).run();
     }
+  } catch (err) {
+    console.error("sendPushForNotification failed:", err);
   }
-
-  return { sent };
-};
+}
