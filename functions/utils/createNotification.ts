@@ -1,4 +1,4 @@
-import { sendPushForNotification } from "../functions/api/_push"; // 👈 Updated to import our working push function
+import { sendPushForNotification } from "./pushNotifications";
 
 export async function createNotification(
   env: any,
