@@ -63,7 +63,6 @@ const stringifyData = (data?: Record<string, any>) => {
   return out;
 };
 
-// 👈 This is the ONLY push function you need.
 export async function sendPushForNotification(
   env: Env,
   n: {
@@ -77,22 +76,26 @@ export async function sendPushForNotification(
     message: string | null;
   }
 ): Promise<void> {
+  console.log("🚀 [PUSH 1/6] sendPushForNotification called for recipient:", n.recipient_id);
   try {
     const projectId = env.FIREBASE_PROJECT_ID || getServiceAccount(env).project_id;
-    if (!projectId) throw new Error("FIREBASE_PROJECT_ID missing");
+    console.log("🚀 [PUSH 2/6] Project ID:", projectId);
 
     const tokensRes = await env.DB.prepare(`SELECT token FROM device_tokens WHERE user_id = ? ORDER BY updated_at DESC LIMIT 20`).bind(n.recipient_id).all();
     const tokens = (tokensRes.results || []).map((x: any) => String(x.token || "").trim()).filter(Boolean);
-    if (tokens.length === 0) return;
+    console.log("🚀 [PUSH 3/6] Tokens found:", tokens.length);
 
-    // Fetch actor real name
+    if (tokens.length === 0) {
+      console.log("🚨 [PUSH] ABORT: No tokens for user", n.recipient_id);
+      return;
+    }
+
     let actorName = "Someone";
     try {
       const actor = await env.DB.prepare(`SELECT username FROM users WHERE id = ? LIMIT 1`).bind(n.actor_id).first<{ username: string | null }>();
       if (actor?.username) actorName = actor.username;
-    } catch { }
+    } catch (e) { console.log("🚨 [PUSH] Actor lookup failed:", e); }
 
-    // Format title and body
     let title = "Feathered Social";
     let body = n.message || "You have new activity";
     if (n.type === "discuss" || n.type === "comment") {
@@ -101,15 +104,16 @@ export async function sendPushForNotification(
     } else if (n.type === "reply") {
       title = "New Reply";
       body = n.message ? `${actorName}: ${n.message}` : `${actorName} replied to you`;
-    } else if (n.type === "follow") {
-      title = "New Follower";
-      body = `${actorName} started following you`;
     }
 
+    console.log("🚀 [PUSH 4/6] Getting OAuth token...");
     const accessToken = await getAccessToken(env);
+    console.log("✅ [PUSH 5/6] Got OAuth token!");
+
     const groupKey = n.group_key || `feathered_${n.type}`;
 
     for (const token of tokens) {
+      console.log("🚀 [PUSH 6/6] Sending to token:", token.substring(0, 20) + "...");
       const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -128,10 +132,12 @@ export async function sendPushForNotification(
 
       if (!res.ok) {
         const errorData = await res.json();
-        console.error("FCM Push Error:", errorData);
+        console.error("🚨 [PUSH] FCM rejected:", errorData);
+      } else {
+        console.log("✅ [PUSH] Delivered to:", token.substring(0, 20) + "...");
       }
     }
   } catch (err) {
-    console.error("sendPushForNotification failed:", err);
+    console.error("🚨 [PUSH] FATAL:", err);
   }
 }
