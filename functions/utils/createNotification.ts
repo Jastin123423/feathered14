@@ -1,4 +1,4 @@
-import { sendPushToUser } from "./pushNotifications";
+import { sendPushForNotification } from "../functions/api/_push"; // 👈 Updated to import our working push function
 
 export async function createNotification(
   env: any,
@@ -21,37 +21,18 @@ export async function createNotification(
     const cleanMessage =
       typeof message === "string" && message.trim() ? message.trim() : null;
 
-    const sendNativePush = async () => {
-      console.log("CREATE_NOTIFICATION_PUSH_ATTEMPT", {
+    // 👈 We wrap our push function so it matches your waitUntil logic
+    const queuePush = async () => {
+      const pushPromise = sendPushForNotification(env, {
         recipient_id,
         actor_id,
         type,
-        entity_type,
-        entity_id,
-      });
-
-      console.log("CALLING_SEND_PUSH");
-
-      const pushResult = await sendPushToUser(env, recipient_id, {
-        title: "UNERA Notifications",
-        body: cleanMessage || "You have a new notification",
-        data: {
-          type,
-          entity_type: entity_type || "",
-          entity_id: entityIdValue || "",
-          actor_id: String(actor_id),
-          recipient_id: String(recipient_id),
-          group_key: cleanGroupKey || "",
-        },
-      });
-
-      console.log("CREATE_NOTIFICATION_PUSH_RESULT", pushResult);
-    };
-
-    const queuePush = async () => {
-      const pushPromise = sendNativePush().catch((e) =>
-        console.error("Native push failed:", e)
-      );
+        entity_type: entity_type || null,
+        entity_id: entityIdValue,
+        parent_id: null, // You can pass this if you have it
+        group_key: cleanGroupKey || `feathered_${type}`,
+        message: cleanMessage,
+      }).catch((e) => console.error("Native push failed:", e));
 
       if (ctx?.waitUntil) {
         ctx.waitUntil(pushPromise);
