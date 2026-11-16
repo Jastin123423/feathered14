@@ -82,7 +82,7 @@ function buildImageVariants(imageUrl: string) {
 /* =========================================================
    Background resolution helpers
    ---------------------------------------------------------
-   posts table background storage precedence:
+   posts table background storage precedence (UNCHANGED):
         background_image_url  (highest)
               ↓
         colours               (animated or gradient)
@@ -90,21 +90,41 @@ function buildImageVariants(imageUrl: string) {
         background_color      (legacy solid hex)
               ↓
         default brand gradient (fallback)
+
+   PLUS (ADDITIVE — new category, does NOT affect the chain above):
+        animated_background_id  → resolved separately into
+                                  `animated_background` object
    ========================================================= */
 type PostBackgroundFields = {
   colours: string | null;
   background_color: string | null;
   background_image_url: string | null;
+  animated_background_id: number | null;
 };
 
 function extractBackgroundFields(post: any): PostBackgroundFields {
   if (!post) {
-    return { colours: null, background_color: null, background_image_url: null };
+    return {
+      colours: null,
+      background_color: null,
+      background_image_url: null,
+      animated_background_id: null,
+    };
   }
   const colours = toStr(post.colours, "").trim() || null;
   const background_color = toStr(post.background_color, "").trim() || null;
   const background_image_url = toStr(post.background_image_url, "").trim() || null;
-  return { colours, background_color, background_image_url };
+
+  const abgRaw = post.animated_background_id;
+  const animated_background_id =
+    abgRaw === null || abgRaw === undefined ? null : toNum(abgRaw, 0) || null;
+
+  return {
+    colours,
+    background_color,
+    background_image_url,
+    animated_background_id,
+  };
 }
 
 function resolveColoursAlias(fields: PostBackgroundFields): string | null {
@@ -122,9 +142,40 @@ function decoratePostWithBackgrounds<T extends Record<string, any> | null>(post:
     colours: bg.colours,
     background_color: bg.background_color,
     background_image_url: bg.background_image_url,
+    animated_background_id: bg.animated_background_id,
     background: alias,
     background_style: alias,
   } as T;
+}
+
+/* =========================================================
+   Animated background resolver (ADDITIVE)
+   Returns the full animated background object or null.
+   Never throws — a broken/missing row must not break the post.
+   ========================================================= */
+async function resolveAnimatedBackground(
+  env: Env,
+  id: number | null
+): Promise<any | null> {
+  if (!id || id <= 0) return null;
+  try {
+    const row = await env.DB
+      .prepare(
+        `SELECT
+           id, name, url,
+           COALESCE(thumbnail_url, url) AS thumbnail_url,
+           poster_url, is_animated, width, height,
+           dominant_color, text_color, overlay_color, overlay_opacity
+         FROM animated_backgrounds
+         WHERE id = ? AND is_active = 1 AND is_deleted = 0
+         LIMIT 1`
+      )
+      .bind(id)
+      .first<any>();
+    return row || null;
+  } catch {
+    return null;
+  }
 }
 
 /* =========================================================
@@ -455,16 +506,32 @@ export const onRequestGet: PagesFunction<Env> = async ({
         .first<any>();
     }
 
+    // Decorate both posts (existing legacy fields preserved).
     const decoratedPost = decoratePostWithBackgrounds(post);
     const decoratedShared = sharedPost
       ? decoratePostWithBackgrounds(sharedPost)
       : null;
 
+    // Resolve animated backgrounds (ADDITIVE — null when not set or soft-deleted).
+    const [animatedBackground, sharedAnimatedBackground] = await Promise.all([
+      resolveAnimatedBackground(env, toNum(post.animated_background_id, 0) || null),
+      sharedPost
+        ? resolveAnimatedBackground(
+            env,
+            toNum(sharedPost.animated_background_id, 0) || null
+          )
+        : Promise.resolve(null),
+    ]);
+
     return json({
       success: true,
       post: {
         ...decoratedPost,
-        shared_post: decoratedShared,
+        // NEW — null when not set; clients fall back to legacy chain
+        animated_background: animatedBackground,
+        shared_post: decoratedShared
+          ? { ...decoratedShared, animated_background: sharedAnimatedBackground }
+          : null,
       },
     });
   } catch (err: any) {
@@ -546,8 +613,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
     }
 
     // Soft-delete the post AND purge its analytics in one batch.
-    // If you'd rather keep analytics for admin dashboards,
-    // remove the two DELETE lines below.
     await env.DB.batch([
       env.DB
         .prepare(
@@ -743,7 +808,7 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       bindings.push(body.brand_id === null ? null : toNum(body.brand_id, 0));
     }
 
-    // -------- Backgrounds --------
+    // -------- Backgrounds (legacy — UNCHANGED) --------
     if (
       body.colours !== undefined ||
       body.background !== undefined ||
@@ -769,6 +834,45 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       bindings.push(bgImage || null);
     }
 
+    // -------- Animated background (NEW category — ADDITIVE) --------
+    if (body.animated_background_id !== undefined) {
+      const raw = body.animated_background_id;
+
+      if (raw === null || raw === "") {
+        // Explicit clear
+        updates.push("animated_background_id = ?");
+        bindings.push(null);
+      } else {
+        const abgId = toNum(raw, 0);
+        if (!abgId) {
+          return json(
+            { success: false, error: "Invalid animated_background_id" },
+            400
+          );
+        }
+
+        // Validate: must exist, be active, and not soft-deleted.
+        const ref = await env.DB
+          .prepare(
+            `SELECT id FROM animated_backgrounds
+             WHERE id = ? AND is_active = 1 AND is_deleted = 0
+             LIMIT 1`
+          )
+          .bind(abgId)
+          .first<{ id: number }>();
+
+        if (!ref) {
+          return json(
+            { success: false, error: "Animated background not available" },
+            422
+          );
+        }
+
+        updates.push("animated_background_id = ?");
+        bindings.push(abgId);
+      }
+    }
+
     if (!updates.length) {
       return json({ success: false, error: "Nothing to update" }, 400);
     }
@@ -785,6 +889,7 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
         `SELECT
            id, user_id, content, media_url, media_type, media_urls, media_types,
            media_meta, colours, background_color, background_image_url,
+           animated_background_id,
            visibility, brand_id, is_boosted, views, shares,
            created_at, updated_at
          FROM posts
@@ -794,9 +899,21 @@ const handleEdit = async (request: Request, env: Env, params: any): Promise<Resp
       .bind(postId)
       .first<any>();
 
+    const decorated = updated ? decoratePostWithBackgrounds(updated) : null;
+
+    // Resolve full animated background for the response (ADDITIVE).
+    const animated_background = updated
+      ? await resolveAnimatedBackground(
+          env,
+          toNum(updated.animated_background_id, 0) || null
+        )
+      : null;
+
     return json({
       success: true,
-      post: updated ? decoratePostWithBackgrounds(updated) : null,
+      post: decorated
+        ? { ...decorated, animated_background }
+        : null,
     });
   } catch (err: any) {
     return json({ success: false, error: err?.message || "Failed to edit post" }, 500);
