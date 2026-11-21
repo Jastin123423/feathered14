@@ -33,6 +33,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
            id, name, url,
            COALESCE(thumbnail_url, url) AS thumbnail_url,
            poster_url, is_animated, width, height,
+           thumb_width, thumb_height, thumb_file_size,
            dominant_color, text_color, overlay_color, overlay_opacity,
            category, sort_order
          FROM animated_backgrounds
