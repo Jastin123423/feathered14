@@ -1,3 +1,4 @@
+
 // functions/api/admin/backgrounds/index.ts
 import type { PagesFunction } from "@cloudflare/workers-types";
 
@@ -24,7 +25,6 @@ const toStr = (v: any, f = "") => (typeof v === "string" ? v : f);
 async function isAdmin(env: Env, request: Request): Promise<boolean> {
   const userId = toNum(request.headers.get("x-user-id"), 0);
   if (!userId) return false;
-  // Replace 'role' with your actual admin column if different
   const row = await env.DB
     .prepare(`SELECT role FROM users WHERE id = ? LIMIT 1`)
     .bind(userId)
@@ -51,15 +51,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       return json({ success: false, error: "url and thumbnail_url are required" }, 400);
     }
 
-    // Insert into animated_backgrounds table
+    // Force category to lowercase for consistent querying later
+    const category = toStr(body.category, "animated").trim().toLowerCase() || "animated";
+
     const row = await env.DB
       .prepare(
         `INSERT INTO animated_backgrounds
            (url, thumbnail_url, name, format, is_animated,
             width, height, file_size, mime_type,
+            thumb_width, thumb_height,
             dominant_color, text_color, overlay_color, overlay_opacity,
-            category, sort_order, is_active)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)
+            category, sort_order, is_active, is_deleted)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0)
          RETURNING *`
       )
       .bind(
@@ -67,16 +70,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         thumbnail_url,
         toStr(body.name, "") || null,
         toStr(body.format, "webp"),
-        toNum(body.is_animated, 0),
+        toNum(body.is_animated, 1), // Default to 1 since it's animated
         toNum(body.width, 0) || null,
         toNum(body.height, 0) || null,
         toNum(body.file_size, 0) || null,
-        toStr(body.mime_type, "") || null,
+        toStr(body.mime_type, "image/webp") || null,
+        toNum(body.thumb_width, 0) || null,
+        toNum(body.thumb_height, 0) || null,
         toStr(body.dominant_color, "") || null,
         toStr(body.text_color, "") || null,
         toStr(body.overlay_color, "") || null,
         body.overlay_opacity != null ? Number(body.overlay_opacity) : null,
-        toStr(body.category, "") || null,
+        category,
         toNum(body.sort_order, 0)
       )
       .first<any>();
