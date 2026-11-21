@@ -42,7 +42,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const bindings: any[] = [];
 
     if (category) {
-      where.push("category = ?");
+      // Use LOWER() for both to ensure "Love" matches "love"
+      where.push("LOWER(category) = LOWER(?)");
       bindings.push(category);
     }
 
@@ -50,8 +51,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       SELECT
         id, name, url,
         COALESCE(thumbnail_url, url) AS thumbnail_url,
-        poster_url,
         is_animated, width, height,
+        thumb_width, thumb_height,
         dominant_color, text_color, overlay_color, overlay_opacity,
         category, sort_order
       FROM animated_backgrounds
@@ -74,8 +75,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         meta: { page, per_page: perPage, count: rows.length },
       },
       200,
-      // curated list → cache at edge
-      { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" }
+      // 🚨 FIX: Change from 300 seconds (5 min) to 0 seconds while you are testing
+      // so new uploads show immediately on refresh.
+      // Once it's stable, you can set it to max-age=60.
+      { "Cache-Control": "public, max-age=0, must-revalidate" }
     );
   } catch (err: any) {
     return json({ success: false, error: err?.message || "Failed to list" }, 500);
